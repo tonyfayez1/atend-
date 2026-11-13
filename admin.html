@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة الإدارة — خدمة خريجين كنيسة مارمينا</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #FAF7F2;
+      color: #1E293B;
+    }
+    .admin-tab-active {
+      background-color: #13294B;
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(19, 41, 75, 0.2);
+    }
+    .admin-tab-inactive {
+      background-color: #FFFFFF;
+      color: #475569;
+    }
+    .admin-tab-inactive:hover {
+      background-color: #F1F5F9;
+      color: #13294B;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-[#13294B] text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/10 text-amber-300 flex items-center justify-center text-xl">🔐</div>
+        <div>
+          <h1 class="text-sm sm:text-base font-extrabold leading-tight">لوحة إدارة خدمة خريجين — كنيسة مارمينا</h1>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span id="cloudBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-bold">وضع المعاينة المحلي</span>
+            <span id="adminEmailLabel" class="hidden text-[11px] text-emerald-300 font-semibold"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="index.html" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-bold transition">صفحة التسجيل ↗</a>
+        <button id="signOutBtn" type="button" class="hidden px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs sm:text-sm font-bold transition">تسجيل خروج</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-6">
+
+    <!-- Login Card (Shown when Firebase is configured & signed out) -->
+    <section id="loginSection" class="hidden max-w-md mx-auto bg-white rounded-3xl p-7 shadow-lg border border-amber-200 text-center space-y-5 mt-8">
+      <div class="w-14 h-14 rounded-2xl bg-[#13294B] text-amber-300 flex items-center justify-center text-3xl mx-auto">✝</div>
+      <div>
+        <h2 class="text-xl font-extrabold text-[#13294B]">تسجيل دخول الإدارة</h2>
+        <p class="text-xs sm:text-sm text-slate-600 mt-1">أدخل بيانات حساب الخادم المسؤول للوصول إلى السجلات والحضور ونشر الأنشطة.</p>
+      </div>
+      <form id="loginForm" class="space-y-4 text-right">
+        <div id="loginError" class="hidden rounded-xl bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2 text-xs font-bold"></div>
+        <div>
+          <label for="loginEmail" class="block text-xs font-bold text-slate-700 mb-1">البريد الإلكتروني</label>
+          <input id="loginEmail" type="email" required placeholder="admin@church.org" dir="ltr" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm text-right outline-none focus:border-[#13294B]" />
+        </div>
+        <div>
+          <label for="loginPassword" class="block text-xs font-bold text-slate-700 mb-1">كلمة المرور</label>
+          <input id="loginPassword" type="password" required placeholder="••••••••" dir="ltr" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm text-right outline-none focus:border-[#13294B]" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white font-bold text-sm transition">دخول إلى لوحة الإدارة</button>
+      </form>
+    </section>
+
+    <!-- Dashboard Content -->
+    <div id="dashboardContent" class="space-y-6">
+
+      <!-- Main Admin Navigation Tabs -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-2 bg-slate-200/70 rounded-2xl">
+        <button id="navTabDirectory" type="button" class="admin-tab-active py-3 px-4 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+          <span>📋</span>
+          <span>سجل الخدام والخريجين</span>
+        </button>
+        <button id="navTabAttendance" type="button" class="admin-tab-inactive py-3 px-4 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+          <span>✅</span>
+          <span>سجلات الحضور والغياب</span>
+        </button>
+        <button id="navTabPublish" type="button" class="admin-tab-inactive py-3 px-4 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+          <span>📢</span>
+          <span>نشر الأنشطة والأخبار</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: DIRECTORY -->
+      <section id="panelDirectory" class="space-y-5">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-[#13294B]/10 text-[#13294B] flex items-center justify-center text-xl">👥</div>
+            <div>
+              <p class="text-xs text-slate-500 font-semibold">إجمالي المسجلين</p>
+              <p id="statTotal" class="text-2xl font-extrabold text-[#13294B]">0</p>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl">💼</div>
+            <div>
+              <p class="text-xs text-slate-500 font-semibold">الخريجون</p>
+              <p id="statGraduates" class="text-2xl font-extrabold text-amber-700">0</p>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl">🤝</div>
+            <div>
+              <p class="text-xs text-slate-500 font-semibold">الخدام</p>
+              <p id="statServants" class="text-2xl font-extrabold text-emerald-700">0</p>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-xl">🏢</div>
+            <div>
+              <p class="text-xs text-slate-500 font-semibold">المجالات</p>
+              <p id="statFields" class="text-2xl font-extrabold text-sky-700">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+          <div class="relative flex-1">
+            <input id="searchInput" type="search" placeholder="ابحث بالاسم، الموبايل، المؤهل، الوظيفة، سنة التخرج، أو اللجنة..." class="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-300 focus:border-[#13294B] outline-none text-sm" />
+            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" data-filter="all" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#13294B] text-white">الكل</button>
+            <button type="button" data-filter="graduate" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700">الخريجون</button>
+            <button type="button" data-filter="servant" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700">الخدام</button>
+            <button id="exportCsvBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold">📥 تصدير Excel</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-right border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-extrabold text-slate-600">
+                  <th class="py-3.5 px-4">الاسم</th>
+                  <th class="py-3.5 px-4">الصفة</th>
+                  <th class="py-3.5 px-4">الموبايل</th>
+                  <th class="py-3.5 px-4">العمل / لجنة الخدمة</th>
+                  <th class="py-3.5 px-4">التفاصيل الإضافية</th>
+                  <th class="py-3.5 px-4 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="directoryBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <div id="emptyState" class="hidden py-12 text-center text-slate-500">
+            <p class="font-bold text-slate-700">لا توجد سجلات مطابقة</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ATTENDANCE -->
+      <section id="panelAttendance" class="hidden space-y-6">
+        <div class="bg-white rounded-3xl p-6 shadow-md border border-amber-200/70 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h2 class="text-xl font-extrabold text-[#13294B]">تسجيل الحضور والغياب</h2>
+              <p class="text-xs sm:text-sm text-slate-500">اختر التاريخ واللقاء، ثم حدد الحاضرين من الخدام والخريجين واحفظ السجل.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="saveAttendanceBtn" type="button" class="px-5 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-sm font-bold shadow-sm transition">💾 حفظ سجل الحضور</button>
+              <button id="exportAttendanceCsvBtn" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold transition">📥 تصدير الحضور</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="attDate" class="block text-xs font-bold text-slate-700 mb-1">تاريخ اللقاء</label>
+              <input id="attDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+            </div>
+            <div>
+              <label for="attTitle" class="block text-xs font-bold text-slate-700 mb-1">اسم الاجتماع / الفعالية</label>
+              <input id="attTitle" type="text" value="الاجتماع الأسبوعي للخريجين" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+            </div>
+            <div>
+              <label for="attRoleFilter" class="block text-xs font-bold text-slate-700 mb-1">عرض</label>
+              <select id="attRoleFilter" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]">
+                <option value="all">الكل (خدام وخريجين)</option>
+                <option value="graduate">الخريجون (المخدومون) فقط</option>
+                <option value="servant">الخدام فقط</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Attendance Summary Chips -->
+          <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm font-bold">
+            <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">الحاضرون: <span id="attPresentCount">0</span></span>
+            <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">الغائبون / غير محدد: <span id="attAbsentCount">0</span></span>
+            <button id="markAllPresentBtn" type="button" class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">تحديد الكل حاضر ✓</button>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+            <table class="w-full text-right border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-extrabold text-slate-600">
+                  <th class="py-3 px-4">الاسم</th>
+                  <th class="py-3 px-4">الصفة</th>
+                  <th class="py-3 px-4">الموبايل</th>
+                  <th class="py-3 px-4 text-center">الحالة</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Saved Attendance Sessions History -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-4">
+          <h3 class="text-lg font-extrabold text-[#13294B]">أرشيف جلسات الحضور المحفوظة</h3>
+          <div id="attendanceHistoryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PUBLISH NEWS & ACTIVITIES -->
+      <section id="panelPublish" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <!-- Publish Form -->
+          <form id="publishForm" class="lg:col-span-2 bg-white rounded-3xl p-6 shadow-md border border-amber-200/70 space-y-4 h-fit">
+            <h2 class="text-xl font-extrabold text-[#13294B] border-b border-slate-100 pb-3">نشر خبر / نشاط / خلوة / موعد</h2>
+            <input id="pubEditId" type="hidden" value="" />
+
+            <div>
+              <label for="pubType" class="block text-xs font-bold text-slate-700 mb-1">التصنيف</label>
+              <select id="pubType" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]">
+                <option value="خبر">خبر</option>
+                <option value="نشاط">نشاط</option>
+                <option value="خلوة روحية">خلوة روحية</option>
+                <option value="موعد اجتماع">موعد اجتماع</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="pubTitle" class="block text-xs font-bold text-slate-700 mb-1">العنوان <span class="text-rose-600">*</span></label>
+              <input id="pubTitle" type="text" required placeholder="مثال: يوم روحي للخريجين بدير..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="pubDate" class="block text-xs font-bold text-slate-700 mb-1">التاريخ / اليوم</label>
+                <input id="pubDate" type="text" placeholder="مثال: الجمعة 20 نوفمبر" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+              </div>
+              <div>
+                <label for="pubTime" class="block text-xs font-bold text-slate-700 mb-1">الوقت</label>
+                <input id="pubTime" type="text" placeholder="مثال: 7:30 مساءً" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+              </div>
+            </div>
+
+            <div>
+              <label for="pubLocation" class="block text-xs font-bold text-slate-700 mb-1">المكان</label>
+              <input id="pubLocation" type="text" placeholder="مثال: قاعة مارمينا الرئيسية" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]" />
+            </div>
+
+            <div>
+              <label for="pubDetails" class="block text-xs font-bold text-slate-700 mb-1">التفاصيل <span class="text-rose-600">*</span></label>
+              <textarea id="pubDetails" rows="3" required placeholder="اكتب تفاصيل النشاط أو الخبر ليظهر للخريجين والخدام..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-[#13294B]"></textarea>
+            </div>
+
+            <div class="flex gap-2">
+              <button id="pubSubmitBtn" type="submit" class="flex-1 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white font-bold text-sm transition">نشر على صفحة الخريجين ✓</button>
+              <button id="pubCancelEditBtn" type="button" class="hidden px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm">إلغاء</button>
+            </div>
+          </form>
+
+          <!-- Published List -->
+          <div class="lg:col-span-3 space-y-4">
+            <h3 class="text-lg font-extrabold text-[#13294B]">المنشورات الحالية الظاهرة للخريجين والخدام</h3>
+            <div id="publishedList" class="space-y-3"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div id="modalOverlay" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-100 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="modalTitle" class="text-lg font-extrabold text-[#13294B]">تفاصيل</h3>
+        <button id="modalCloseBtn" type="button" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <div id="modalBody" class="text-sm text-slate-700 space-y-2.5 max-h-[60vh] overflow-y-auto"></div>
+      <div id="modalActions" class="flex justify-end gap-2 pt-2 border-t border-slate-100"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 left-5 z-50 hidden items-center gap-2.5 px-4 py-3 rounded-xl bg-[#13294B] text-white text-sm font-bold shadow-xl border border-amber-400/40">
+    <span id="toastIcon">✓</span>
+    <span id="toastMsg">تم الحفظ</span>
+  </div>
+
+  <script>
+    (function () {
+      // =========================================================================
+      // إعدادات Firebase: الصق نفس بيانات مشروعك الموجودة في index.html هنا
+      // =========================================================================
+      const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyBuKLQeUDzL9SDE6nVxotJtNfJ3FV0h33s",
+        authDomain: "atend-69104.firebaseapp.com",
+        databaseURL: "https://atend-69104-default-rtdb.firebaseio.com",
+        projectId: "atend-69104",
+        storageBucket: "atend-69104.firebasestorage.app",
+        messagingSenderId: "75032114646",
+        appId: "1:75032114646:web:be7ee4d55d862c14c0a077",
+        measurementId: "G-4DM24SZCNE"
+      };
+
+      const REG_COLLECTION = 'graduates_registrations';
+      const ACT_COLLECTION = 'graduates_activities';
+      const ATT_COLLECTION = 'graduates_attendance';
+
+      const STORAGE_REG_KEY = 'st_mina_graduates_ministry_v1';
+      const STORAGE_ACT_KEY = 'st_mina_graduates_activities_v1';
+      const STORAGE_ATT_KEY = 'st_mina_graduates_attendance_v1';
+
+      const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
+      let db = null;
+      let auth = null;
+      if (isFirebaseConfigured) {
+        try {
+          if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+          db = firebase.firestore();
+          auth = firebase.auth();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      const defaultSamples = [
+        { id: 'sample-1', role: 'graduate', name: 'كيرلس هاني بولس', phone: '01204567891', degree: 'بكالوريوس حاسبات ومعلومات', gradYear: '2024', job: 'مهندس برمجيات', marital: 'أعزب / آنسة', address: 'منطقة الكنيسة', father: 'أبونا يوحنا', notes: '', isSample: true, createdAt: '2026-11-10T10:00:00Z' },
+        { id: 'sample-2', role: 'graduate', name: 'مارينا عاطف سمير', phone: '01098765432', degree: 'بكالوريوس صيدلة', gradYear: '2023', job: 'صيدلانية', marital: 'خاطب / مخطوبة', address: 'وسط البلد', father: 'أبونا بيشوي', notes: '', isSample: true, createdAt: '2026-11-11T14:30:00Z' },
+        { id: 'sample-3', role: 'servant', name: 'مينا وجيه لطفي', phone: '01223344556', committee: 'أسرة الافتقاد والمتابعة', experience: 'من 3 إلى 5 سنوات', work: 'مهندس مدني', father: 'أبونا مارك', notes: '', isSample: true, createdAt: '2026-11-09T18:00:00Z' },
+        { id: 'sample-4', role: 'servant', name: 'دميانة عادل رزق', phone: '01112223334', committee: 'إعداد المناهج ودراسة الكتاب', experience: 'من 1 إلى 3 سنوات', work: 'أخصائية موارد بشرية', father: 'أبونا يوحنا', notes: '', isSample: true, createdAt: '2026-11-10T16:20:00Z' }
+      ];
+
+      const defaultActivities = [
+        { id: 'act-1', type: 'موعد اجتماع', title: 'الاجتماع الأسبوعي لأسرة الخريجين', date: 'الجمعة أسبوعياً', time: '7:30 مساءً', location: 'قاعة مارمينا الرئيسية بالكنيسة', details: 'دراسة كتابية ومناقشة موضوعات الحياة العملية والأسرة المسيحية.', createdAt: '2026-11-10T12:00:00Z' },
+        { id: 'act-2', type: 'خلوة روحية', title: 'يوم روحي وخلوة الخريجين', date: 'السبت 28 نوفمبر', time: '7:00 صباحاً - 6:00 مساءً', location: 'بيت الخلوة — الدير', details: 'قداس صباحي وتأملات روحية ووجبة أغابي مشتركة.', createdAt: '2026-11-11T10:00:00Z' }
+      ];
+
+      let records = [];
+      let activities = [];
+      let attendanceSessions = {}; // keyed by date: { date, title, presentIds: [], updatedAt }
+      let currentAttendanceMap = {}; // id -> boolean
+      let currentFilter = 'all';
+      let searchQuery = '';
+
+      function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function showToast(msg, icon = '✓') {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMsg').textContent = msg;
+        document.getElementById('toastIcon').textContent = icon;
+        toast.classList.remove('hidden');
+        toast.classList.add('flex');
+        clearTimeout(window._toastTimer);
+        window._toastTimer = setTimeout(() => {
+          toast.classList.add('hidden');
+          toast.classList.remove('flex');
+        }, 3200);
+      }
+
+      function openModal(title, bodyHtml, actionsHtml) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalBody').innerHTML = bodyHtml;
+        document.getElementById('modalActions').innerHTML = actionsHtml;
+        const overlay = document.getElementById('modalOverlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+      }
+
+      function closeModal() {
+        const overlay = document.getElementById('modalOverlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+      }
+
+      // Admin Main Tabs
+      function switchAdminTab(tab) {
+        const panels = {
+          directory: ['navTabDirectory', 'panelDirectory'],
+          attendance: ['navTabAttendance', 'panelAttendance'],
+          publish: ['navTabPublish', 'panelPublish']
+        };
+        Object.entries(panels).forEach(([k, [btnId, panelId]]) => {
+          const btn = document.getElementById(btnId);
+          const panel = document.getElementById(panelId);
+          if (k === tab) {
+            btn.className = 'admin-tab-active py-3 px-4 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2';
+            panel.classList.remove('hidden');
+          } else {
+            btn.className = 'admin-tab-inactive py-3 px-4 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2';
+            panel.classList.add('hidden');
+          }
+        });
+      }
+
+      document.getElementById('navTabDirectory').addEventListener('click', () => switchAdminTab('directory'));
+      document.getElementById('navTabAttendance').addEventListener('click', () => switchAdminTab('attendance'));
+      document.getElementById('navTabPublish').addEventListener('click', () => switchAdminTab('publish'));
+
+      // ==================== DIRECTORY LOGIC ====================
+      function updateStats() {
+        const grads = records.filter(r => r.role === 'graduate');
+        const servants = records.filter(r => r.role === 'servant');
+        const fields = new Set(records.map(r => (r.role === 'graduate' ? r.job : r.work) || '').map(s => s.trim()).filter(Boolean));
+        document.getElementById('statTotal').textContent = records.length;
+        document.getElementById('statGraduates').textContent = grads.length;
+        document.getElementById('statServants').textContent = servants.length;
+        document.getElementById('statFields').textContent = fields.size;
+      }
+
+      function renderDirectory() {
+        const tbody = document.getElementById('directoryBody');
+        const empty = document.getElementById('emptyState');
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = records.filter(r => {
+          if (currentFilter !== 'all' && r.role !== currentFilter) return false;
+          if (!q) return true;
+          return [r.name, r.phone, r.degree, r.gradYear, r.job, r.committee, r.work].join(' ').toLowerCase().includes(q);
+        });
+        if (!filtered.length) {
+          tbody.innerHTML = '';
+          empty.classList.remove('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+        tbody.innerHTML = filtered.map(r => {
+          const isGrad = r.role === 'graduate';
+          const badge = isGrad
+            ? '<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">💼 خريج</span>'
+            : '<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">🤝 خادم</span>';
+          const main = isGrad
+            ? `<div class="font-semibold">${escapeHtml(r.job)}</div><div class="text-xs text-slate-500">${escapeHtml(r.degree)} • دفعة ${escapeHtml(r.gradYear)}</div>`
+            : `<div class="font-semibold">${escapeHtml(r.committee)}</div><div class="text-xs text-slate-500">${escapeHtml(r.work)}</div>`;
+          const extra = isGrad ? escapeHtml(r.marital || '—') : escapeHtml(r.experience || '—');
+          return `
+            <tr class="hover:bg-amber-50/40">
+              <td class="py-3 px-4 font-bold text-[#13294B]">${escapeHtml(r.name)}</td>
+              <td class="py-3 px-4">${badge}</td>
+              <td class="py-3 px-4 font-mono text-xs" dir="ltr"><a href="tel:${escapeHtml(r.phone)}" class="text-[#13294B] hover:underline font-semibold">${escapeHtml(r.phone)}</a></td>
+              <td class="py-3 px-4">${main}</td>
+              <td class="py-3 px-4 text-xs text-slate-600">${extra}</td>
+              <td class="py-3 px-4 text-center">
+                <div class="inline-flex gap-1.5">
+                  <button type="button" data-view-id="${escapeHtml(r.id)}" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#13294B] hover:text-white text-xs font-bold">التفاصيل</button>
+                  <button type="button" data-edit-id="${escapeHtml(r.id)}" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-500 hover:text-white text-amber-800 text-xs font-bold">تعديل</button>
+                  <button type="button" data-del-id="${escapeHtml(r.id)}" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-bold">حذف</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      async function updateRecordInStore(id, updates) {
+        if (db) await db.collection(REG_COLLECTION).doc(id).update(updates);
+        const idx = records.findIndex(r => r.id === id);
+        if (idx !== -1) records[idx] = Object.assign({}, records[idx], updates);
+        if (!db) localStorage.setItem(STORAGE_REG_KEY, JSON.stringify(records));
+        updateStats();
+        renderDirectory();
+        renderAttendanceTable();
+      }
+
+      async function deleteRecordFromStore(id) {
+        if (db) await db.collection(REG_COLLECTION).doc(id).delete();
+        records = records.filter(r => r.id !== id);
+        if (!db) localStorage.setItem(STORAGE_REG_KEY, JSON.stringify(records));
+        updateStats();
+        renderDirectory();
+        renderAttendanceTable();
+      }
+
+      document.getElementById('directoryBody').addEventListener('click', function (e) {
+        const viewBtn = e.target.closest('[data-view-id]');
+        if (viewBtn) {
+          const r = records.find(x => x.id === viewBtn.getAttribute('data-view-id'));
+          if (!r) return;
+          const isGrad = r.role === 'graduate';
+          const rows = isGrad
+            ? [['الاسم', r.name], ['الموبايل', r.phone], ['المؤهل', r.degree], ['سنة التخرج', r.gradYear], ['الوظيفة', r.job], ['الحالة الاجتماعية', r.marital], ['السكن', r.address], ['أب الاعتراف', r.father], ['ملاحظات', r.notes]]
+            : [['الاسم', r.name], ['الموبايل', r.phone], ['اللجنة', r.committee], ['التخصص', r.work], ['سنوات الخدمة', r.experience], ['أب الاعتراف', r.father], ['ملاحظات', r.notes]];
+          openModal('بيانات المسجل', rows.map(([k, v]) => `<div class="flex justify-between py-1.5 border-b border-slate-100"><span class="font-bold text-slate-500">${k}:</span><span class="font-semibold text-[#13294B]">${escapeHtml(v || '—')}</span></div>`).join(''), `<button type="button" id="mClose" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">إغلاق</button>`);
+          document.getElementById('mClose').addEventListener('click', closeModal);
+          return;
+        }
+        const editBtn = e.target.closest('[data-edit-id]');
+        if (editBtn) {
+          const r = records.find(x => x.id === editBtn.getAttribute('data-edit-id'));
+          if (!r) return;
+          const isGrad = r.role === 'graduate';
+          openModal('تعديل البيانات', `
+            <div class="space-y-3">
+              <div><label class="block text-xs font-bold mb-1">الاسم</label><input id="eName" type="text" value="${escapeHtml(r.name)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+              <div><label class="block text-xs font-bold mb-1">الموبايل</label><input id="ePhone" type="tel" value="${escapeHtml(r.phone)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+              ${isGrad
+                ? `<div><label class="block text-xs font-bold mb-1">الوظيفة</label><input id="eJob" type="text" value="${escapeHtml(r.job)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                   <div><label class="block text-xs font-bold mb-1">المؤهل</label><input id="eDeg" type="text" value="${escapeHtml(r.degree)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>`
+                : `<div><label class="block text-xs font-bold mb-1">لجنة الخدمة</label><input id="eCom" type="text" value="${escapeHtml(r.committee)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                   <div><label class="block text-xs font-bold mb-1">التخصص</label><input id="eWork" type="text" value="${escapeHtml(r.work)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>`}
+              <div><label class="block text-xs font-bold mb-1">ملاحظات</label><textarea id="eNotes" rows="2" class="w-full px-3 py-2 rounded-xl border text-sm">${escapeHtml(r.notes || '')}</textarea></div>
+            </div>
+          `, `<button id="cEdit" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">إلغاء</button><button id="sEdit" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">حفظ</button>`);
+          document.getElementById('cEdit').addEventListener('click', closeModal);
+          document.getElementById('sEdit').addEventListener('click', async () => {
+            const updates = { name: document.getElementById('eName').value.trim(), phone: document.getElementById('ePhone').value.trim(), notes: document.getElementById('eNotes').value.trim() };
+            if (isGrad) {
+              updates.job = document.getElementById('eJob').value.trim();
+              updates.degree = document.getElementById('eDeg').value.trim();
+            } else {
+              updates.committee = document.getElementById('eCom').value.trim();
+              updates.work = document.getElementById('eWork').value.trim();
+            }
+            await updateRecordInStore(r.id, updates);
+            closeModal();
+            showToast('تم حفظ التعديلات');
+          });
+          return;
+        }
+        const delBtn = e.target.closest('[data-del-id]');
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-del-id');
+          openModal('تأكيد الحذف', '<p>هل أنت متأكد من حذف هذا السجل؟</p>', `<button id="cDel" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">إلغاء</button><button id="yDel" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-bold">حذف</button>`);
+          document.getElementById('cDel').addEventListener('click', closeModal);
+          document.getElementById('yDel').addEventListener('click', async () => {
+            await deleteRecordFromStore(id);
+            closeModal();
+            showToast('تم الحذف', '🗑️');
+          });
+        }
+      });
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+          currentFilter = this.getAttribute('data-filter');
+          document.querySelectorAll('.filter-btn').forEach(b => b.className = 'filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700');
+          this.className = 'filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#13294B] text-white';
+          renderDirectory();
+        });
+      });
+      document.getElementById('searchInput').addEventListener('input', e => {
+        searchQuery = e.target.value;
+        renderDirectory();
+      });
+
+      document.getElementById('exportCsvBtn').addEventListener('click', () => {
+        const headers = ['الاسم', 'الصفة', 'الموبايل', 'المؤهل/التخصص', 'سنة التخرج/الخدمة', 'الوظيفة', 'اللجنة', 'ملاحظات'];
+        const rows = [headers.join(',')];
+        records.forEach(r => {
+          const g = r.role === 'graduate';
+          rows.push([r.name, g ? 'خريج' : 'خادم', r.phone, g ? r.degree : r.work, g ? r.gradYear : r.experience, g ? r.job : r.work, g ? '' : r.committee, r.notes || ''].map(v => '"' + String(v || '').replace(/"/g, '""') + '"').join(','));
+        });
+        const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'سجل_الخدام_والخريجين.csv';
+        a.click();
+        showToast('تم تصدير السجل', '📥');
+      });
+
+      // ==================== ATTENDANCE LOGIC ====================
+      const todayStr = new Date().toISOString().slice(0, 10);
+      document.getElementById('attDate').value = todayStr;
+
+      function loadDateAttendance(dateVal) {
+        const sess = attendanceSessions[dateVal];
+        currentAttendanceMap = {};
+        if (sess) {
+          document.getElementById('attTitle').value = sess.title || 'الاجتماع الأسبوعي للخريجين';
+          (sess.presentIds || []).forEach(id => { currentAttendanceMap[id] = true; });
+        }
+        renderAttendanceTable();
+      }
+
+      function renderAttendanceTable() {
+        const roleFilter = document.getElementById('attRoleFilter').value;
+        const list = records.filter(r => roleFilter === 'all' || r.role === roleFilter);
+        const tbody = document.getElementById('attendanceBody');
+
+        let presentCount = 0;
+        let absentCount = 0;
+
+        tbody.innerHTML = list.map(r => {
+          const isPresent = !!currentAttendanceMap[r.id];
+          if (isPresent) presentCount++; else absentCount++;
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-4 font-bold text-[#13294B]">${escapeHtml(r.name)}</td>
+              <td class="py-3 px-4 text-xs">${r.role === 'graduate' ? 'خريج' : 'خادم'}</td>
+              <td class="py-3 px-4 font-mono text-xs" dir="ltr">${escapeHtml(r.phone)}</td>
+              <td class="py-3 px-4 text-center">
+                <button type="button" data-toggle-att="${escapeHtml(r.id)}" class="px-4 py-1.5 rounded-xl text-xs font-bold transition ${isPresent ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                  ${isPresent ? '✓ حاضر' : 'غائب'}
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        document.getElementById('attPresentCount').textContent = presentCount;
+        document.getElementById('attAbsentCount').textContent = absentCount;
+      }
+
+      function renderAttendanceHistory() {
+        const container = document.getElementById('attendanceHistoryList');
+        const list = Object.values(attendanceSessions).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (!list.length) {
+          container.innerHTML = '<p class="text-xs text-slate-500 col-span-full">لم يتم حفظ أي جلسات حضور بعد.</p>';
+          return;
+        }
+        container.innerHTML = list.map(s => `
+          <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+            <div>
+              <p class="font-bold text-sm text-[#13294B]">${escapeHtml(s.title)}</p>
+              <p class="text-xs text-slate-500">${escapeHtml(s.date)} • الحضور: <strong class="text-emerald-700">${(s.presentIds || []).length}</strong></p>
+            </div>
+            <button type="button" data-load-att="${escapeHtml(s.date)}" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-bold hover:bg-[#13294B] hover:text-white transition">عرض</button>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('attendanceBody').addEventListener('click', e => {
+        const btn = e.target.closest('[data-toggle-att]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-toggle-att');
+        currentAttendanceMap[id] = !currentAttendanceMap[id];
+        renderAttendanceTable();
+      });
+
+      document.getElementById('attRoleFilter').addEventListener('change', renderAttendanceTable);
+      document.getElementById('attDate').addEventListener('change', e => loadDateAttendance(e.target.value));
+
+      document.getElementById('markAllPresentBtn').addEventListener('click', () => {
+        const roleFilter = document.getElementById('attRoleFilter').value;
+        records.filter(r => roleFilter === 'all' || r.role === roleFilter).forEach(r => {
+          currentAttendanceMap[r.id] = true;
+        });
+        renderAttendanceTable();
+      });
+
+      document.getElementById('saveAttendanceBtn').addEventListener('click', async () => {
+        const dateVal = document.getElementById('attDate').value;
+        const titleVal = document.getElementById('attTitle').value.trim() || 'الاجتماع الأسبوعي';
+        if (!dateVal) {
+          showToast('اختر التاريخ أولاً', '⚠️');
+          return;
+        }
+        const presentIds = Object.keys(currentAttendanceMap).filter(id => currentAttendanceMap[id]);
+        const payload = { date: dateVal, title: titleVal, presentIds, updatedAt: new Date().toISOString() };
+        attendanceSessions[dateVal] = payload;
+
+        if (db) {
+          await db.collection(ATT_COLLECTION).doc(dateVal).set(payload);
+        } else {
+          localStorage.setItem(STORAGE_ATT_KEY, JSON.stringify(attendanceSessions));
+        }
+        renderAttendanceHistory();
+        showToast('تم حفظ سجل الحضور بنجاح (' + presentIds.length + ' حاضر)');
+      });
+
+      document.getElementById('attendanceHistoryList').addEventListener('click', e => {
+        const btn = e.target.closest('[data-load-att]');
+        if (!btn) return;
+        const d = btn.getAttribute('data-load-att');
+        document.getElementById('attDate').value = d;
+        loadDateAttendance(d);
+      });
+
+      document.getElementById('exportAttendanceCsvBtn').addEventListener('click', () => {
+        const dateVal = document.getElementById('attDate').value;
+        const titleVal = document.getElementById('attTitle').value.trim();
+        const rows = [['التاريخ', 'اللقاء', 'الاسم', 'الصفة', 'الموبايل', 'الحالة'].join(',')];
+        records.forEach(r => {
+          rows.push([dateVal, titleVal, r.name, r.role === 'graduate' ? 'خريج' : 'خادم', r.phone, currentAttendanceMap[r.id] ? 'حاضر' : 'غائب'].map(v => '"' + String(v || '').replace(/"/g, '""') + '"').join(','));
+        });
+        const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'حضور_خريجين_' + dateVal + '.csv';
+        a.click();
+        showToast('تم تصدير كشف الحضور', '📥');
+      });
+
+      // ==================== PUBLISH ACTIVITIES LOGIC ====================
+      function renderPublishedList() {
+        const container = document.getElementById('publishedList');
+        if (!activities.length) {
+          container.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-slate-500 border">لا توجد منشورات حالياً.</div>';
+          return;
+        }
+        container.innerHTML = activities.map(a => `
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">${escapeHtml(a.type)}</span>
+                <span class="text-xs text-slate-500">${escapeHtml(a.date || '')} ${a.time ? '• ' + escapeHtml(a.time) : ''}</span>
+              </div>
+              <h4 class="font-extrabold text-[#13294B]">${escapeHtml(a.title)}</h4>
+              <p class="text-xs text-slate-600">${escapeHtml(a.details)}</p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" data-edit-act="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-500 hover:text-white text-amber-800 text-xs font-bold">تعديل</button>
+              <button type="button" data-del-act="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-bold">حذف</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('publishForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const editId = document.getElementById('pubEditId').value;
+        const item = {
+          type: document.getElementById('pubType').value,
+          title: document.getElementById('pubTitle').value.trim(),
+          date: document.getElementById('pubDate').value.trim(),
+          time: document.getElementById('pubTime').value.trim(),
+          location: document.getElementById('pubLocation').value.trim(),
+          details: document.getElementById('pubDetails').value.trim(),
+          createdAt: new Date().toISOString()
+        };
+        if (!item.title || !item.details) {
+          showToast('أدخل العنوان والتفاصيل', '⚠️');
+          return;
+        }
+        if (editId) {
+          if (db) await db.collection(ACT_COLLECTION).doc(editId).update(item);
+          const idx = activities.findIndex(a => a.id === editId);
+          if (idx !== -1) activities[idx] = Object.assign({ id: editId }, item);
+          showToast('تم تحديث المنشور');
+        } else {
+          if (db) {
+            const ref = await db.collection(ACT_COLLECTION).add(item);
+            item.id = ref.id;
+          } else {
+            item.id = 'act-' + Date.now();
+          }
+          activities.unshift(item);
+          showToast('تم النشر على صفحة الخريجين!');
+        }
+        if (!db) localStorage.setItem(STORAGE_ACT_KEY, JSON.stringify(activities));
+        this.reset();
+        document.getElementById('pubEditId').value = '';
+        document.getElementById('pubSubmitBtn').textContent = 'نشر على صفحة الخريجين ✓';
+        document.getElementById('pubCancelEditBtn').classList.add('hidden');
+        renderPublishedList();
+      });
+
+      document.getElementById('pubCancelEditBtn').addEventListener('click', () => {
+        document.getElementById('publishForm').reset();
+        document.getElementById('pubEditId').value = '';
+        document.getElementById('pubSubmitBtn').textContent = 'نشر على صفحة الخريجين ✓';
+        document.getElementById('pubCancelEditBtn').classList.add('hidden');
+      });
+
+      document.getElementById('publishedList').addEventListener('click', async e => {
+        const editBtn = e.target.closest('[data-edit-act]');
+        if (editBtn) {
+          const a = activities.find(x => x.id === editBtn.getAttribute('data-edit-act'));
+          if (!a) return;
+          document.getElementById('pubEditId').value = a.id;
+          document.getElementById('pubType').value = a.type;
+          document.getElementById('pubTitle').value = a.title;
+          document.getElementById('pubDate').value = a.date || '';
+          document.getElementById('pubTime').value = a.time || '';
+          document.getElementById('pubLocation').value = a.location || '';
+          document.getElementById('pubDetails').value = a.details;
+          document.getElementById('pubSubmitBtn').textContent = 'حفظ تعديل المنشور ✓';
+          document.getElementById('pubCancelEditBtn').classList.remove('hidden');
+          return;
+        }
+        const delBtn = e.target.closest('[data-del-act]');
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-del-act');
+          if (db) await db.collection(ACT_COLLECTION).doc(id).delete();
+          activities = activities.filter(x => x.id !== id);
+          if (!db) localStorage.setItem(STORAGE_ACT_KEY, JSON.stringify(activities));
+          renderPublishedList();
+          showToast('تم حذف المنشور', '🗑️');
+        }
+      });
+
+      // ==================== INIT & AUTH ====================
+      async function loadAllData() {
+        if (db) {
+          try {
+            const [regSnap, actSnap, attSnap] = await Promise.all([
+              db.collection(REG_COLLECTION).orderBy('createdAt', 'desc').get(),
+              db.collection(ACT_COLLECTION).orderBy('createdAt', 'desc').get(),
+              db.collection(ATT_COLLECTION).get()
+            ]);
+            records = regSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+            activities = actSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+            attendanceSessions = {};
+            attSnap.docs.forEach(d => { attendanceSessions[d.id] = d.data(); });
+          } catch (err) {
+            console.error(err);
+            showToast('تعذر تحميل البيانات من Firebase', '⚠️');
+          }
+        } else {
+          try {
+            records = JSON.parse(localStorage.getItem(STORAGE_REG_KEY) || 'null') || defaultSamples.slice();
+          } catch (e) { records = defaultSamples.slice(); }
+          try {
+            activities = JSON.parse(localStorage.getItem(STORAGE_ACT_KEY) || 'null') || defaultActivities.slice();
+          } catch (e) { activities = defaultActivities.slice(); }
+          try {
+            attendanceSessions = JSON.parse(localStorage.getItem(STORAGE_ATT_KEY) || 'null') || {};
+          } catch (e) { attendanceSessions = {}; }
+        }
+        updateStats();
+        renderDirectory();
+        loadDateAttendance(document.getElementById('attDate').value);
+        renderAttendanceHistory();
+        renderPublishedList();
+      }
+
+      document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+      document.getElementById('modalOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeModal();
+      });
+
+      if (isFirebaseConfigured && auth) {
+        const badge = document.getElementById('cloudBadge');
+        badge.textContent = 'متصل بـ Firebase';
+        badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 font-bold';
+
+        auth.onAuthStateChanged(user => {
+          const loginSec = document.getElementById('loginSection');
+          const dash = document.getElementById('dashboardContent');
+          const signOut = document.getElementById('signOutBtn');
+          const emailLbl = document.getElementById('adminEmailLabel');
+          if (user) {
+            loginSec.classList.add('hidden');
+            dash.classList.remove('hidden');
+            signOut.classList.remove('hidden');
+            emailLbl.classList.remove('hidden');
+            emailLbl.textContent = user.email || '';
+            loadAllData();
+          } else {
+            loginSec.classList.remove('hidden');
+            dash.classList.add('hidden');
+            signOut.classList.add('hidden');
+            emailLbl.classList.add('hidden');
+          }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async e => {
+          e.preventDefault();
+          const errBox = document.getElementById('loginError');
+          try {
+            errBox.classList.add('hidden');
+            await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
+          } catch (err) {
+            errBox.textContent = 'بيانات الدخول غير صحيحة.';
+            errBox.classList.remove('hidden');
+          }
+        });
+
+        document.getElementById('signOutBtn').addEventListener('click', () => auth.signOut());
+      } else {
+        loadAllData();
+      }
+    })();
+  </script>
+</body>
+</html>
