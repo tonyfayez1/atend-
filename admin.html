@@ -869,11 +869,11 @@ const FIREBASE_CONFIG = {
         document.getElementById('loginForm').addEventListener('submit', async e => {
           e.preventDefault();
           const errBox = document.getElementById('loginError');
-          try {
+         try {
             errBox.classList.add('hidden');
             await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
           } catch (err) {
-            errBox.textContent = 'بيانات الدخول غير صحيحة.';
+            errBox.textContent = (err.code || '') + ' : ' + (err.message || '');
             errBox.classList.remove('hidden');
           }
         });
