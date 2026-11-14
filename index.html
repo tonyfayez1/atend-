@@ -127,27 +127,29 @@
   <!-- Main Content -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-14 flex-1 w-full">
 
-    <!-- Registration Section -->
+    <!-- Registration & Quick Attendance Section -->
     <section id="register" class="scroll-mt-20">
       <div class="text-center max-w-2xl mx-auto mb-7">
-        <h2 class="text-2xl sm:text-3xl font-extrabold text-[#13294B]">استمارة التسجيل الإلكتروني</h2>
-        <p class="text-sm sm:text-base text-slate-600 mt-1.5">اختر نوع التسجيل (مخدوم خريج أو خادم) واملأ البيانات المطلوبة للتواصل والمتابعة.</p>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-[#13294B]">تسجيل الحضور والانضمام للخدمة</h2>
+        <p class="text-sm sm:text-base text-slate-600 mt-1.5">سجل حضورك بالاسم في الموعد المحدد، أو أنشئ حساباً جديداً إذا كانت هذه زيارتك الأولى.</p>
       </div>
 
-      <!-- Quick Attendance for Returning Members -->
-      <div class="max-w-4xl mx-auto mb-8 bg-white rounded-3xl shadow-md border border-emerald-200/80 p-5 sm:p-7">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+      <!-- Quick Attendance Card (Visible First) -->
+      <div class="max-w-3xl mx-auto bg-white rounded-3xl shadow-md border border-emerald-200/80 p-6 sm:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div>
             <h3 class="text-lg sm:text-xl font-extrabold text-[#13294B] flex items-center gap-2">
               <span>✅</span>
-              <span>تسجيل الحضور السريع (لو مسجل قبل كده)</span>
+              <span>تسجيل الحضور</span>
             </h3>
-            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">اكتب اسمك فقط للتأكد من وجود بياناتك وتسجيل حضورك اليوم مباشرة.</p>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">اكتب اسمك كما سجلته من قبل لتسجيل حضورك مباشرة.</p>
           </div>
-          <span class="self-start sm:self-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold shrink-0">حضور بالاسم فقط</span>
+          <div id="activeSessionBadge" class="px-3.5 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold shrink-0">
+            📅 جاري تحميل الموعد...
+          </div>
         </div>
 
-        <form id="quickAttendanceForm" class="mt-4 flex flex-col sm:flex-row gap-3" novalidate>
+        <form id="quickAttendanceForm" class="mt-5 flex flex-col sm:flex-row gap-3" novalidate>
           <input id="quickAttName" type="text" required placeholder="اكتب اسمك رباعي كما سجلته من قبل..." class="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:border-[#13294B] focus:ring-2 focus:ring-[#13294B]/20 outline-none text-sm" />
           <button id="quickAttBtn" type="submit" class="px-6 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-sm transition shrink-0">
             ✓ تسجيل حضور
@@ -155,9 +157,26 @@
         </form>
 
         <div id="quickAttStatus" class="hidden mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"></div>
+
+        <!-- Prompt for New Users -->
+        <div id="newUserPromptBox" class="mt-6 pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
+          <p class="text-sm font-semibold text-slate-600">لو لم تكن مسجلاً من قبل في خدمة الخريجين؟</p>
+          <button id="openNewRegBtn" type="button" class="px-5 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-sm font-bold shadow-sm transition shrink-0">
+            📝 اضغط هنا للتسجيل (خادم أو مخدوم)
+          </button>
+        </div>
       </div>
 
-      <!-- Role Switcher Tabs -->
+      <!-- New Member Registration Panel (Hidden until requested) -->
+      <div id="newRegistrationPanel" class="hidden mt-8">
+        <div class="max-w-4xl mx-auto flex items-center justify-between mb-5 px-1">
+          <h3 class="text-lg sm:text-xl font-extrabold text-[#13294B]">استمارة تسجيل عضو جديد</h3>
+          <button id="closeNewRegBtn" type="button" class="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition">
+            ✕ إخفاء الاستمارة
+          </button>
+        </div>
+
+        <!-- Role Switcher Tabs -->
       <div class="max-w-md mx-auto grid grid-cols-2 gap-2 p-1.5 bg-slate-200/70 rounded-2xl mb-6">
         <button id="tabGraduateBtn" type="button" class="tab-active py-2.5 px-4 rounded-xl text-sm sm:text-base font-bold transition flex items-center justify-center gap-2">
           <span>💼</span>
@@ -354,6 +373,7 @@
           </button>
         </div>
       </form>
+      </div>
     </section>
 
     <!-- Dynamic News & Activities Section -->
@@ -462,9 +482,11 @@
       const REG_COLLECTION = 'graduates_registrations';
       const ACT_COLLECTION = 'graduates_activities';
       const ATT_COLLECTION = 'graduates_attendance';
+      const SETTINGS_COLLECTION = 'graduates_settings';
       const STORAGE_REG_KEY = 'st_mina_graduates_ministry_v1';
       const STORAGE_ACT_KEY = 'st_mina_graduates_activities_v1';
       const STORAGE_ATT_KEY = 'st_mina_graduates_attendance_v1';
+      const STORAGE_ACTIVE_ATT_KEY = 'st_mina_active_attendance_v1';
 
       const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
       let db = null;
@@ -775,13 +797,30 @@
 
       document.getElementById('tabGraduateBtn').addEventListener('click', () => switchRoleTab('graduate'));
       document.getElementById('tabServantBtn').addEventListener('click', () => switchRoleTab('servant'));
+      function showNewRegistrationPanel(role, prefillName) {
+        const panel = document.getElementById('newRegistrationPanel');
+        panel.classList.remove('hidden');
+        switchRoleTab(role || 'graduate');
+        if (prefillName) {
+          const grNameInput = document.getElementById('grName');
+          const svNameInput = document.getElementById('svName');
+          if (grNameInput) grNameInput.value = prefillName;
+          if (svNameInput) svNameInput.value = prefillName;
+        }
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      document.getElementById('openNewRegBtn').addEventListener('click', () => {
+        showNewRegistrationPanel('graduate', document.getElementById('quickAttName').value.trim());
+      });
+      document.getElementById('closeNewRegBtn').addEventListener('click', () => {
+        document.getElementById('newRegistrationPanel').classList.add('hidden');
+      });
       document.getElementById('heroGraduateBtn').addEventListener('click', () => {
-        switchRoleTab('graduate');
-        document.getElementById('register').scrollIntoView({ behavior: 'smooth' });
+        showNewRegistrationPanel('graduate');
       });
       document.getElementById('heroServantBtn').addEventListener('click', () => {
-        switchRoleTab('servant');
-        document.getElementById('register').scrollIntoView({ behavior: 'smooth' });
+        showNewRegistrationPanel('servant');
       });
       document.getElementById('mobileMenuBtn').addEventListener('click', () => {
         document.getElementById('mobileMenu').classList.toggle('hidden');
@@ -790,6 +829,48 @@
       document.getElementById('modalOverlay').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeModal();
       });
+
+      let activeAttendanceConfig = {
+        date: new Date().toISOString().slice(0, 10),
+        title: 'الاجتماع الأسبوعي للخريجين'
+      };
+
+      function updateActiveSessionBadge() {
+        const badge = document.getElementById('activeSessionBadge');
+        if (!badge) return;
+        badge.innerHTML = `📅 ${escapeHtml(activeAttendanceConfig.title)} — <span dir="ltr">${escapeHtml(activeAttendanceConfig.date)}</span>`;
+      }
+
+      async function loadActiveAttendanceConfig() {
+        if (db) {
+          try {
+            const docSnap = await db.collection(SETTINGS_COLLECTION).doc('attendance_config').get();
+            if (docSnap.exists && docSnap.data().date) {
+              activeAttendanceConfig = {
+                date: docSnap.data().date,
+                title: docSnap.data().title || 'الاجتماع الأسبوعي للخريجين'
+              };
+              updateActiveSessionBadge();
+              return;
+            }
+          } catch (err) {
+            console.warn('Could not load attendance_config:', err);
+          }
+        }
+        try {
+          const saved = localStorage.getItem(STORAGE_ACTIVE_ATT_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && parsed.date) {
+              activeAttendanceConfig = {
+                date: parsed.date,
+                title: parsed.title || 'الاجتماع الأسبوعي للخريجين'
+              };
+            }
+          }
+        } catch (e) {}
+        updateActiveSessionBadge();
+      }
 
       function normalizeArabicName(str) {
         return String(str || '')
@@ -817,32 +898,34 @@
         return [];
       }
 
-      async function markMemberAttendanceToday(member) {
-        const todayStr = new Date().toISOString().slice(0, 10);
+      async function markMemberAttendanceForActiveSession(member) {
+        const sessionDate = activeAttendanceConfig.date || new Date().toISOString().slice(0, 10);
+        const sessionTitle = activeAttendanceConfig.title || 'الاجتماع الأسبوعي للخريجين';
         const nowIso = new Date().toISOString();
 
         if (db) {
-          const docRef = db.collection(ATT_COLLECTION).doc(todayStr);
+          const docRef = db.collection(ATT_COLLECTION).doc(sessionDate);
           const docSnap = await docRef.get();
           if (docSnap.exists) {
             const data = docSnap.data() || {};
             const presentIds = Array.isArray(data.presentIds) ? data.presentIds : [];
             if (presentIds.includes(member.id)) {
-              return { alreadyPresent: true, date: todayStr };
+              return { alreadyPresent: true, date: sessionDate, title: data.title || sessionTitle };
             }
             await docRef.update({
               presentIds: firebase.firestore.FieldValue.arrayUnion(member.id),
               updatedAt: nowIso
             });
+            return { alreadyPresent: false, date: sessionDate, title: data.title || sessionTitle };
           } else {
             await docRef.set({
-              date: todayStr,
-              title: 'الاجتماع الأسبوعي للخريجين',
+              date: sessionDate,
+              title: sessionTitle,
               presentIds: [member.id],
               updatedAt: nowIso
             });
+            return { alreadyPresent: false, date: sessionDate, title: sessionTitle };
           }
-          return { alreadyPresent: false, date: todayStr };
         }
 
         let sessions = {};
@@ -851,22 +934,22 @@
           if (saved) sessions = JSON.parse(saved) || {};
         } catch (e) {}
 
-        const sess = sessions[todayStr] || {
-          date: todayStr,
-          title: 'الاجتماع الأسبوعي للخريجين',
+        const sess = sessions[sessionDate] || {
+          date: sessionDate,
+          title: sessionTitle,
           presentIds: [],
           updatedAt: nowIso
         };
         if (sess.presentIds.includes(member.id)) {
-          return { alreadyPresent: true, date: todayStr };
+          return { alreadyPresent: true, date: sessionDate, title: sess.title || sessionTitle };
         }
         sess.presentIds.push(member.id);
         sess.updatedAt = nowIso;
-        sessions[todayStr] = sess;
+        sessions[sessionDate] = sess;
         try {
           localStorage.setItem(STORAGE_ATT_KEY, JSON.stringify(sessions));
         } catch (e) {}
-        return { alreadyPresent: false, date: todayStr };
+        return { alreadyPresent: false, date: sessionDate, title: sess.title || sessionTitle };
       }
 
       function showQuickAttStatus(type, htmlContent) {
@@ -885,20 +968,6 @@
         box.innerHTML = htmlContent;
       }
 
-      function goToCreateAccount(prefillName) {
-        switchRoleTab('graduate');
-        const grNameInput = document.getElementById('grName');
-        const svNameInput = document.getElementById('svName');
-        if (prefillName) {
-          grNameInput.value = prefillName;
-          if (svNameInput) svNameInput.value = prefillName;
-        }
-        document.getElementById('graduateForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setTimeout(() => {
-          document.getElementById('grPhone').focus();
-        }, 450);
-      }
-
       document.getElementById('quickAttendanceForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const inputEl = document.getElementById('quickAttName');
@@ -906,7 +975,7 @@
         const rawName = inputEl.value.trim();
         const normInput = normalizeArabicName(rawName);
 
-        if (!normInput || normInput.length < 3) {
+        if (!normInput || normInput.length < 2) {
           showQuickAttStatus('error', 'يرجى كتابة اسمك أولاً للبحث في البيانات المسجلة.');
           return;
         }
@@ -925,13 +994,13 @@
 
           if (matches.length === 1) {
             const member = matches[0];
-            const res = await markMemberAttendanceToday(member);
+            const res = await markMemberAttendanceForActiveSession(member);
             const roleLabel = member.role === 'servant' ? 'خادم' : 'مخدوم خريج';
             if (res.alreadyPresent) {
-              showQuickAttStatus('warning', `تم تسجيل حضورك اليوم (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) ✓`);
-              showToast('حضورك مسجل بالفعل اليوم', '✓');
+              showQuickAttStatus('warning', `تم تسجيل حضورك في <strong>${escapeHtml(res.title)}</strong> (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) ✓`);
+              showToast('حضورك مسجل بالفعل لهذا الموعد', '✓');
             } else {
-              showQuickAttStatus('success', `تم تسجيل حضورك بنجاح اليوم (${escapeHtml(res.date)}) يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) 🎉`);
+              showQuickAttStatus('success', `تم تسجيل حضورك بنجاح في <strong>${escapeHtml(res.title)}</strong> (${escapeHtml(res.date)}) يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) 🎉`);
               inputEl.value = '';
               showToast('تم تسجيل حضورك بنجاح', '✅');
             }
@@ -942,7 +1011,7 @@
               </button>
             `).join('');
             showQuickAttStatus('warning', `
-              <p class="mb-2">وجدنا أكثر من اسم مطابق. اختر اسمك لتسجيل الحضور، أو اكتب الاسم رباعي:</p>
+              <p class="mb-2">وجدنا أكثر من اسم مطابق. اختر اسمك لتسجيل الحضور:</p>
               <div class="flex flex-wrap gap-2">${buttonsHtml}</div>
             `);
             document.querySelectorAll('[data-pick-member]').forEach(btn => {
@@ -950,12 +1019,12 @@
                 const pickedId = this.getAttribute('data-pick-member');
                 const picked = matches.find(x => x.id === pickedId);
                 if (!picked) return;
-                const res = await markMemberAttendanceToday(picked);
+                const res = await markMemberAttendanceForActiveSession(picked);
                 const roleLabel = picked.role === 'servant' ? 'خادم' : 'مخدوم خريج';
                 if (res.alreadyPresent) {
-                  showQuickAttStatus('warning', `تم تسجيل حضورك اليوم (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) ✓`);
+                  showQuickAttStatus('warning', `تم تسجيل حضورك في <strong>${escapeHtml(res.title)}</strong> (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) ✓`);
                 } else {
-                  showQuickAttStatus('success', `تم تسجيل حضورك بنجاح اليوم (${escapeHtml(res.date)}) يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) 🎉`);
+                  showQuickAttStatus('success', `تم تسجيل حضورك بنجاح في <strong>${escapeHtml(res.title)}</strong> (${escapeHtml(res.date)}) يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) 🎉`);
                   inputEl.value = '';
                   showToast('تم تسجيل حضورك بنجاح', '✅');
                 }
@@ -970,17 +1039,25 @@
                 </button>
               </div>
             `);
-            document.getElementById('quickCreateAccountBtn').addEventListener('click', () => goToCreateAccount(rawName));
+            document.getElementById('quickCreateAccountBtn').addEventListener('click', () => {
+              showNewRegistrationPanel('graduate', rawName);
+              setTimeout(() => document.getElementById('grPhone').focus(), 450);
+            });
           }
         } catch (err) {
-          console.error(err);
-          showQuickAttStatus('error', 'حدث خطأ أثناء التحقق من الاسم. يرجى المحاولة مرة أخرى.');
+          console.error('Quick attendance error:', err);
+          if (err && err.code === 'permission-denied') {
+            showQuickAttStatus('error', 'صلاحيات قاعدة البيانات (Firestore Rules) تمنع القراءة/الكتابة للزوار حالياً. يرجى تحديث Rules في Firebase Console.');
+          } else {
+            showQuickAttStatus('error', 'حدث خطأ أثناء التحقق من الاسم. يرجى المحاولة مرة أخرى.');
+          }
         } finally {
           btnEl.disabled = false;
           btnEl.textContent = '✓ تسجيل حضور';
         }
       });
 
+      loadActiveAttendanceConfig();
       loadActivities();
     })();
   </script>
