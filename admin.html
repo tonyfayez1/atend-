@@ -498,15 +498,150 @@
 
       document.getElementById('directoryBody').addEventListener('click', function (e) {
         const viewBtn = e.target.closest('[data-view-id]');
+     const STANDARD_INTERESTS = [
+          'دراسة كتاب ولاهوت',
+          'دعم مهني وتوظيف',
+          'خدمة مجتمعية وتنمية',
+          'كورال وتسبيح',
+          'خلوات ومؤتمرات',
+          'إعداد أسرة ومشورة'
+        ];
+
         if (viewBtn) {
           const r = records.find(x => x.id === viewBtn.getAttribute('data-view-id'));
           if (!r) return;
           const isGrad = r.role === 'graduate';
+          const interestsArr = Array.isArray(r.interests) ? r.interests : [];
+          const interestsHtml = interestsArr.length
+            ? `<div class="flex flex-wrap gap-1.5 justify-end">${interestsArr.map(i => `<span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold">${escapeHtml(i)}</span>`).join('')}</div>`
+            : '<span class="text-slate-400">لا توجد أنشطة مسجلة</span>';
+
           const rows = isGrad
-            ? [['الاسم', r.name], ['الموبايل', r.phone], ['المؤهل', r.degree], ['سنة التخرج', r.gradYear], ['الوظيفة', r.job], ['الحالة الاجتماعية', r.marital], ['السكن', r.address], ['أب الاعتراف', r.father], ['ملاحظات', r.notes]]
-            : [['الاسم', r.name], ['الموبايل', r.phone], ['اللجنة', r.committee], ['التخصص', r.work], ['سنوات الخدمة', r.experience], ['أب الاعتراف', r.father], ['ملاحظات', r.notes]];
-          openModal('بيانات المسجل', rows.map(([k, v]) => `<div class="flex justify-between py-1.5 border-b border-slate-100"><span class="font-bold text-slate-500">${k}:</span><span class="font-semibold text-[#13294B]">${escapeHtml(v || '—')}</span></div>`).join(''), `<button type="button" id="mClose" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">إغلاق</button>`);
+            ? [
+                ['الاسم', escapeHtml(r.name || '—')],
+                ['الصفة', 'مخدوم خريج'],
+                ['الموبايل', `<span dir="ltr">${escapeHtml(r.phone || '—')}</span>`],
+                ['المؤهل', escapeHtml(r.degree || '—')],
+                ['سنة التخرج', escapeHtml(r.gradYear || '—')],
+                ['الوظيفة', escapeHtml(r.job || '—')],
+                ['الحالة الاجتماعية', escapeHtml(r.marital || '—')],
+                ['تاريخ الميلاد', escapeHtml(r.birthdate || '—')],
+                ['السكن', escapeHtml(r.address || '—')],
+                ['أب الاعتراف', escapeHtml(r.father || '—')],
+                ['الأنشطة المسجل بها', interestsHtml],
+                ['ملاحظات', escapeHtml(r.notes || '—')]
+              ]
+            : [
+                ['الاسم', escapeHtml(r.name || '—')],
+                ['الصفة', 'خادم'],
+                ['الموبايل', `<span dir="ltr">${escapeHtml(r.phone || '—')}</span>`],
+                ['لجنة الخدمة', escapeHtml(r.committee || '—')],
+                ['التخصص / العمل', escapeHtml(r.work || '—')],
+                ['سنوات الخدمة', escapeHtml(r.experience || '—')],
+                ['أب الاعتراف', escapeHtml(r.father || '—')],
+                ['الأنشطة / الخدمات', interestsHtml],
+                ['ملاحظات', escapeHtml(r.notes || '—')]
+              ];
+          openModal('بيانات المسجل كاملة', rows.map(([k, v]) => `<div class="flex items-start justify-between gap-4 py-2 border-b border-slate-100"><span class="font-bold text-slate-500 shrink-0">${k}:</span><div class="font-semibold text-[#13294B] text-left">${v}</div></div>`).join(''), `<button type="button" id="mClose" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">إغلاق</button>`);
           document.getElementById('mClose').addEventListener('click', closeModal);
+          return;
+        }
+
+        const editBtn = e.target.closest('[data-edit-id]');
+        if (editBtn) {
+          const r = records.find(x => x.id === editBtn.getAttribute('data-edit-id'));
+          if (!r) return;
+          const isGrad = r.role === 'graduate';
+          const currentInterests = Array.isArray(r.interests) ? r.interests.slice() : [];
+          const allInterestOptions = Array.from(new Set([...STANDARD_INTERESTS, ...currentInterests]));
+
+          const renderInterestCheckboxes = (opts, selected) => opts.map(opt => `
+            <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer text-xs font-semibold">
+              <input type="checkbox" name="eInterests" value="${escapeHtml(opt)}" ${selected.includes(opt) ? 'checked' : ''} class="accent-[#13294B]" />
+              <span>${escapeHtml(opt)}</span>
+            </label>
+          `).join('');
+
+          openModal('تعديل البيانات والأنشطة', `
+            <div class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="block text-xs font-bold mb-1">الاسم</label><input id="eName" type="text" value="${escapeHtml(r.name)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                <div><label class="block text-xs font-bold mb-1">الموبايل</label><input id="ePhone" type="tel" value="${escapeHtml(r.phone)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+              </div>
+              ${isGrad
+                ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                     <div><label class="block text-xs font-bold mb-1">المؤهل</label><input id="eDeg" type="text" value="${escapeHtml(r.degree)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">سنة التخرج</label><input id="eGradYear" type="text" value="${escapeHtml(r.gradYear || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">الوظيفة</label><input id="eJob" type="text" value="${escapeHtml(r.job)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">الحالة الاجتماعية</label><input id="eMarital" type="text" value="${escapeHtml(r.marital || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">السكن</label><input id="eAddr" type="text" value="${escapeHtml(r.address || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">تاريخ الميلاد</label><input id="eBirth" type="date" value="${escapeHtml(r.birthdate || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                   </div>`
+                : `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                     <div><label class="block text-xs font-bold mb-1">لجنة الخدمة</label><input id="eCom" type="text" value="${escapeHtml(r.committee)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">التخصص</label><input id="eWork" type="text" value="${escapeHtml(r.work)}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                     <div><label class="block text-xs font-bold mb-1">سنوات الخدمة</label><input id="eExp" type="text" value="${escapeHtml(r.experience || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+                   </div>`}
+              <div><label class="block text-xs font-bold mb-1">أب الاعتراف</label><input id="eFather" type="text" value="${escapeHtml(r.father || '')}" class="w-full px-3 py-2 rounded-xl border text-sm" /></div>
+              <div class="pt-2 border-t border-slate-100">
+                <label class="block text-xs font-bold mb-2 text-[#13294B]">الأنشطة والاهتمامات (يمكنك التحديد أو الإلغاء أو إضافة نشاط جديد):</label>
+                <div id="eInterestsContainer" class="flex flex-wrap gap-2 mb-2">
+                  ${renderInterestCheckboxes(allInterestOptions, currentInterests)}
+                </div>
+                <div class="flex gap-2 mt-2">
+                  <input id="eCustomInterestInput" type="text" placeholder="أضف نشاطاً جديداً..." class="flex-1 px-3 py-1.5 rounded-xl border text-xs" />
+                  <button type="button" id="eAddInterestBtn" class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold">+ إضافة</button>
+                </div>
+              </div>
+              <div><label class="block text-xs font-bold mb-1">ملاحظات</label><textarea id="eNotes" rows="2" class="w-full px-3 py-2 rounded-xl border text-sm">${escapeHtml(r.notes || '')}</textarea></div>
+            </div>
+          `, `<button id="cEdit" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">إلغاء</button><button id="sEdit" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">حفظ التعديلات</button>`);
+
+          document.getElementById('eAddInterestBtn').addEventListener('click', () => {
+            const customIn = document.getElementById('eCustomInterestInput');
+            const val = customIn.value.trim();
+            if (!val) return;
+            const container = document.getElementById('eInterestsContainer');
+            const exists = Array.from(container.querySelectorAll('input[name="eInterests"]')).find(cb => cb.value === val);
+            if (exists) {
+              exists.checked = true;
+            } else {
+              container.insertAdjacentHTML('beforeend', `
+                <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer text-xs font-semibold">
+                  <input type="checkbox" name="eInterests" value="${escapeHtml(val)}" checked class="accent-[#13294B]" />
+                  <span>${escapeHtml(val)}</span>
+                </label>
+              `);
+            }
+            customIn.value = '';
+          });
+
+          document.getElementById('cEdit').addEventListener('click', closeModal);
+          document.getElementById('sEdit').addEventListener('click', async () => {
+            const selectedInterests = Array.from(document.querySelectorAll('input[name="eInterests"]:checked')).map(cb => cb.value);
+            const updates = {
+              name: document.getElementById('eName').value.trim(),
+              phone: document.getElementById('ePhone').value.trim(),
+              father: document.getElementById('eFather').value.trim(),
+              interests: selectedInterests,
+              notes: document.getElementById('eNotes').value.trim()
+            };
+            if (isGrad) {
+              updates.job = document.getElementById('eJob').value.trim();
+              updates.degree = document.getElementById('eDeg').value.trim();
+              updates.gradYear = document.getElementById('eGradYear').value.trim();
+              updates.marital = document.getElementById('eMarital').value.trim();
+              updates.address = document.getElementById('eAddr').value.trim();
+              updates.birthdate = document.getElementById('eBirth').value;
+            } else {
+              updates.committee = document.getElementById('eCom').value.trim();
+              updates.work = document.getElementById('eWork').value.trim();
+              updates.experience = document.getElementById('eExp').value.trim();
+            }
+            await updateRecordInStore(r.id, updates);
+            closeModal();
+            showToast('تم حفظ التعديلات والأنشطة بنجاح');
+          });
           return;
         }
         const editBtn = e.target.closest('[data-edit-id]');
