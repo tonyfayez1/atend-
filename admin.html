@@ -865,8 +865,10 @@ function getWhatsAppFollowUpUrl(phone, name) {
               <p class="font-bold text-sm text-[#13294B]">${escapeHtml(s.title)}</p>
               <p class="text-xs text-slate-500">${escapeHtml(s.date)} • الحضور: <strong class="text-emerald-700">${(s.presentIds || []).length}</strong></p>
             </div>
-            <button type="button" data-load-att="${escapeHtml(s.date)}" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-bold hover:bg-[#13294B] hover:text-white transition">عرض</button>
-          </div>
+<div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" data-load-att="${escapeHtml(s.date)}" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-bold hover:bg-[#13294B] hover:text-white transition">عرض</button>
+              <button type="button" data-del-att="${escapeHtml(s.date)}" class="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-600 hover:text-white transition">حذف</button>
+            </div>          </div>
         `).join('');
       }
 
@@ -909,14 +911,40 @@ function getWhatsAppFollowUpUrl(phone, name) {
         showToast('تم حفظ سجل الحضور بنجاح (' + presentIds.length + ' حاضر)');
       });
 
-      document.getElementById('attendanceHistoryList').addEventListener('click', e => {
-        const btn = e.target.closest('[data-load-att]');
-        if (!btn) return;
-        const d = btn.getAttribute('data-load-att');
-        document.getElementById('attDate').value = d;
-        loadDateAttendance(d);
+document.getElementById('attendanceHistoryList').addEventListener('click', e => {
+        const loadBtn = e.target.closest('[data-load-att]');
+        if (loadBtn) {
+          const d = loadBtn.getAttribute('data-load-att');
+          document.getElementById('attDate').value = d;
+          loadDateAttendance(d);
+          return;
+        }
+        const delBtn = e.target.closest('[data-del-att]');
+        if (delBtn) {
+          const d = delBtn.getAttribute('data-del-att');
+          openModal('تأكيد حذف جلسة الحضور', `<p>هل أنت متأكد من حذف سجل حضور <strong>${escapeHtml(d)}</strong> نهائياً؟</p>`, `<button id="cDelAtt" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">إلغاء</button><button id="yDelAtt" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-bold">حذف</button>`);
+          document.getElementById('cDelAtt').addEventListener('click', closeModal);
+          document.getElementById('yDelAtt').addEventListener('click', async () => {
+            try {
+              if (db) {
+                await db.collection(ATT_COLLECTION).doc(d).delete();
+              }
+              delete attendanceSessions[d];
+              if (!db) localStorage.setItem(STORAGE_ATT_KEY, JSON.stringify(attendanceSessions));
+              if (document.getElementById('attDate').value === d) {
+                currentAttendanceMap = {};
+              }
+              renderAttendanceTable();
+              renderAttendanceHistory();
+              closeModal();
+              showToast('تم حذف جلسة الحضور من قاعدة البيانات', '🗑️');
+            } catch (err) {
+              console.error(err);
+              showToast('حدث خطأ أثناء الحذف', '⚠️');
+            }
+          });
+        }
       });
-
       document.getElementById('exportAttendanceCsvBtn').addEventListener('click', () => {
         const dateVal = document.getElementById('attDate').value;
         const titleVal = document.getElementById('attTitle').value.trim();
