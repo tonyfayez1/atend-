@@ -178,6 +178,7 @@
               <p class="text-xs sm:text-sm text-slate-500">اختر التاريخ واللقاء، ثم حدد الحاضرين من الخدام والخريجين واحفظ السجل.</p>
             </div>
             <div class="flex flex-wrap gap-2">
+              <button id="setActiveSessionBtn" type="button" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-sm transition">📌 اعتماد الموعد للموقع</button>
               <button id="saveAttendanceBtn" type="button" class="px-5 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-sm font-bold shadow-sm transition">💾 حفظ سجل الحضور</button>
               <button id="exportAttendanceCsvBtn" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold transition">📥 تصدير الحضور</button>
               <button id="exportAttendancePdfBtn" type="button" class="px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold transition">📄 تصدير الحضور PDF</button>
@@ -329,10 +330,12 @@
       const REG_COLLECTION = 'graduates_registrations';
       const ACT_COLLECTION = 'graduates_activities';
       const ATT_COLLECTION = 'graduates_attendance';
+      const SETTINGS_COLLECTION = 'graduates_settings';
 
       const STORAGE_REG_KEY = 'st_mina_graduates_ministry_v1';
       const STORAGE_ACT_KEY = 'st_mina_graduates_activities_v1';
       const STORAGE_ATT_KEY = 'st_mina_graduates_attendance_v1';
+      const STORAGE_ACTIVE_ATT_KEY = 'st_mina_active_attendance_v1';
 
       const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
       let db = null;
@@ -792,6 +795,27 @@
         a.download = 'حضور_خريجين_' + dateVal + '.csv';
         a.click();
         showToast('تم تصدير كشف الحضور', '📥');
+      });
+
+      document.getElementById('setActiveSessionBtn').addEventListener('click', async () => {
+        const dateVal = document.getElementById('attDate').value;
+        const titleVal = document.getElementById('attTitle').value.trim() || 'الاجتماع الأسبوعي للخريجين';
+        if (!dateVal) {
+          showToast('اختر التاريخ أولاً', '⚠️');
+          return;
+        }
+        const configPayload = { date: dateVal, title: titleVal, updatedAt: new Date().toISOString() };
+        try {
+          if (db) {
+            await db.collection(SETTINGS_COLLECTION).doc('attendance_config').set(configPayload);
+          } else {
+            localStorage.setItem(STORAGE_ACTIVE_ATT_KEY, JSON.stringify(configPayload));
+          }
+          showToast('تم اعتماد الموعد للتسجيل على الموقع: ' + dateVal, '📌');
+        } catch (err) {
+          console.error(err);
+          showToast('تعذر حفظ موعد التسجيل', '⚠️');
+        }
       });
 
       document.getElementById('exportAttendancePdfBtn').addEventListener('click', () => {
