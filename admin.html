@@ -546,7 +546,7 @@
           document.getElementById('mClose').addEventListener('click', closeModal);
           return;
         }
-
+      }
         const editBtn = e.target.closest('[data-edit-id]');
         if (editBtn) {
           const r = records.find(x => x.id === editBtn.getAttribute('data-edit-id'));
