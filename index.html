@@ -134,6 +134,29 @@
         <p class="text-sm sm:text-base text-slate-600 mt-1.5">اختر نوع التسجيل (مخدوم خريج أو خادم) واملأ البيانات المطلوبة للتواصل والمتابعة.</p>
       </div>
 
+      <!-- Quick Attendance for Returning Members -->
+      <div class="max-w-4xl mx-auto mb-8 bg-white rounded-3xl shadow-md border border-emerald-200/80 p-5 sm:p-7">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+          <div>
+            <h3 class="text-lg sm:text-xl font-extrabold text-[#13294B] flex items-center gap-2">
+              <span>✅</span>
+              <span>تسجيل الحضور السريع (لو مسجل قبل كده)</span>
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">اكتب اسمك فقط للتأكد من وجود بياناتك وتسجيل حضورك اليوم مباشرة.</p>
+          </div>
+          <span class="self-start sm:self-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold shrink-0">حضور بالاسم فقط</span>
+        </div>
+
+        <form id="quickAttendanceForm" class="mt-4 flex flex-col sm:flex-row gap-3" novalidate>
+          <input id="quickAttName" type="text" required placeholder="اكتب اسمك رباعي كما سجلته من قبل..." class="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:border-[#13294B] focus:ring-2 focus:ring-[#13294B]/20 outline-none text-sm" />
+          <button id="quickAttBtn" type="submit" class="px-6 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-sm transition shrink-0">
+            ✓ تسجيل حضور
+          </button>
+        </form>
+
+        <div id="quickAttStatus" class="hidden mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"></div>
+      </div>
+
       <!-- Role Switcher Tabs -->
       <div class="max-w-md mx-auto grid grid-cols-2 gap-2 p-1.5 bg-slate-200/70 rounded-2xl mb-6">
         <button id="tabGraduateBtn" type="button" class="tab-active py-2.5 px-4 rounded-xl text-sm sm:text-base font-bold transition flex items-center justify-center gap-2">
@@ -426,20 +449,22 @@
       // =========================================================================
       // إعدادات Firebase: الصق بيانات مشروعك من Firebase Console هنا
       // =========================================================================
-  const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC4iFOF2c8yD7ClJBMOy7RnO1tLAFa2ibg",
-  authDomain: "atend-senior.firebaseapp.com",
-  projectId: "atend-senior",
-  storageBucket: "atend-senior.firebasestorage.app",
-  messagingSenderId: "587040872516",
-  appId: "1:587040872516:web:c7a845565665d2f8f28411",
-  measurementId: "G-LBZTLB0V0M"
-};
+      const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyC4iFOF2c8yD7ClJBMOy7RnO1tLAFa2ibg",
+        authDomain: "atend-senior.firebaseapp.com",
+        projectId: "atend-senior",
+        storageBucket: "atend-senior.firebasestorage.app",
+        messagingSenderId: "587040872516",
+        appId: "1:587040872516:web:c7a845565665d2f8f28411",
+        measurementId: "G-LBZTLB0V0M"
+      };
 
       const REG_COLLECTION = 'graduates_registrations';
       const ACT_COLLECTION = 'graduates_activities';
+      const ATT_COLLECTION = 'graduates_attendance';
       const STORAGE_REG_KEY = 'st_mina_graduates_ministry_v1';
       const STORAGE_ACT_KEY = 'st_mina_graduates_activities_v1';
+      const STORAGE_ATT_KEY = 'st_mina_graduates_attendance_v1';
 
       const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
       let db = null;
@@ -764,6 +789,196 @@
       document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
       document.getElementById('modalOverlay').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeModal();
+      });
+
+      function normalizeArabicName(str) {
+        return String(str || '')
+          .trim()
+          .replace(/[\u064B-\u065F\u0670]/g, '')
+          .replace(/[أإآ]/g, 'ا')
+          .replace(/ى/g, 'ي')
+          .replace(/ة/g, 'ه')
+          .replace(/\s+/g, ' ')
+          .toLowerCase();
+      }
+
+      async function fetchAllRegistrations() {
+        if (db) {
+          const snap = await db.collection(REG_COLLECTION).get();
+          return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+        }
+        try {
+          const saved = localStorage.getItem(STORAGE_REG_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [];
+      }
+
+      async function markMemberAttendanceToday(member) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const nowIso = new Date().toISOString();
+
+        if (db) {
+          const docRef = db.collection(ATT_COLLECTION).doc(todayStr);
+          const docSnap = await docRef.get();
+          if (docSnap.exists) {
+            const data = docSnap.data() || {};
+            const presentIds = Array.isArray(data.presentIds) ? data.presentIds : [];
+            if (presentIds.includes(member.id)) {
+              return { alreadyPresent: true, date: todayStr };
+            }
+            await docRef.update({
+              presentIds: firebase.firestore.FieldValue.arrayUnion(member.id),
+              updatedAt: nowIso
+            });
+          } else {
+            await docRef.set({
+              date: todayStr,
+              title: 'الاجتماع الأسبوعي للخريجين',
+              presentIds: [member.id],
+              updatedAt: nowIso
+            });
+          }
+          return { alreadyPresent: false, date: todayStr };
+        }
+
+        let sessions = {};
+        try {
+          const saved = localStorage.getItem(STORAGE_ATT_KEY);
+          if (saved) sessions = JSON.parse(saved) || {};
+        } catch (e) {}
+
+        const sess = sessions[todayStr] || {
+          date: todayStr,
+          title: 'الاجتماع الأسبوعي للخريجين',
+          presentIds: [],
+          updatedAt: nowIso
+        };
+        if (sess.presentIds.includes(member.id)) {
+          return { alreadyPresent: true, date: todayStr };
+        }
+        sess.presentIds.push(member.id);
+        sess.updatedAt = nowIso;
+        sessions[todayStr] = sess;
+        try {
+          localStorage.setItem(STORAGE_ATT_KEY, JSON.stringify(sessions));
+        } catch (e) {}
+        return { alreadyPresent: false, date: todayStr };
+      }
+
+      function showQuickAttStatus(type, htmlContent) {
+        const box = document.getElementById('quickAttStatus');
+        box.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-amber-50', 'border-amber-200', 'text-amber-800', 'bg-rose-50', 'border-rose-200', 'text-rose-800', 'bg-sky-50', 'border-sky-200', 'text-sky-800', 'border');
+        box.classList.add('border');
+        if (type === 'success') {
+          box.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
+        } else if (type === 'warning') {
+          box.classList.add('bg-amber-50', 'border-amber-200', 'text-amber-800');
+        } else if (type === 'info') {
+          box.classList.add('bg-sky-50', 'border-sky-200', 'text-sky-800');
+        } else {
+          box.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-800');
+        }
+        box.innerHTML = htmlContent;
+      }
+
+      function goToCreateAccount(prefillName) {
+        switchRoleTab('graduate');
+        const grNameInput = document.getElementById('grName');
+        const svNameInput = document.getElementById('svName');
+        if (prefillName) {
+          grNameInput.value = prefillName;
+          if (svNameInput) svNameInput.value = prefillName;
+        }
+        document.getElementById('graduateForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => {
+          document.getElementById('grPhone').focus();
+        }, 450);
+      }
+
+      document.getElementById('quickAttendanceForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const inputEl = document.getElementById('quickAttName');
+        const btnEl = document.getElementById('quickAttBtn');
+        const rawName = inputEl.value.trim();
+        const normInput = normalizeArabicName(rawName);
+
+        if (!normInput || normInput.length < 3) {
+          showQuickAttStatus('error', 'يرجى كتابة اسمك أولاً للبحث في البيانات المسجلة.');
+          return;
+        }
+
+        btnEl.disabled = true;
+        btnEl.textContent = 'جاري التحقق...';
+        showQuickAttStatus('info', 'جاري البحث عن اسمك في قاعدة البيانات...');
+
+        try {
+          const members = await fetchAllRegistrations();
+          let matches = members.filter(m => normalizeArabicName(m.name) === normInput);
+
+          if (matches.length === 0 && normInput.split(' ').length >= 2) {
+            matches = members.filter(m => normalizeArabicName(m.name).includes(normInput));
+          }
+
+          if (matches.length === 1) {
+            const member = matches[0];
+            const res = await markMemberAttendanceToday(member);
+            const roleLabel = member.role === 'servant' ? 'خادم' : 'مخدوم خريج';
+            if (res.alreadyPresent) {
+              showQuickAttStatus('warning', `تم تسجيل حضورك اليوم (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) ✓`);
+              showToast('حضورك مسجل بالفعل اليوم', '✓');
+            } else {
+              showQuickAttStatus('success', `تم تسجيل حضورك بنجاح اليوم (${escapeHtml(res.date)}) يا <strong>${escapeHtml(member.name)}</strong> (${roleLabel}) 🎉`);
+              inputEl.value = '';
+              showToast('تم تسجيل حضورك بنجاح', '✅');
+            }
+          } else if (matches.length > 1) {
+            const buttonsHtml = matches.slice(0, 5).map(m => `
+              <button type="button" data-pick-member="${escapeHtml(m.id)}" class="px-3 py-1.5 rounded-xl bg-white border border-amber-300 hover:bg-[#13294B] hover:text-white text-xs font-bold transition">
+                ${escapeHtml(m.name)} (${m.role === 'servant' ? 'خادم' : 'خريج'})
+              </button>
+            `).join('');
+            showQuickAttStatus('warning', `
+              <p class="mb-2">وجدنا أكثر من اسم مطابق. اختر اسمك لتسجيل الحضور، أو اكتب الاسم رباعي:</p>
+              <div class="flex flex-wrap gap-2">${buttonsHtml}</div>
+            `);
+            document.querySelectorAll('[data-pick-member]').forEach(btn => {
+              btn.addEventListener('click', async function () {
+                const pickedId = this.getAttribute('data-pick-member');
+                const picked = matches.find(x => x.id === pickedId);
+                if (!picked) return;
+                const res = await markMemberAttendanceToday(picked);
+                const roleLabel = picked.role === 'servant' ? 'خادم' : 'مخدوم خريج';
+                if (res.alreadyPresent) {
+                  showQuickAttStatus('warning', `تم تسجيل حضورك اليوم (${escapeHtml(res.date)}) مسبقاً يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) ✓`);
+                } else {
+                  showQuickAttStatus('success', `تم تسجيل حضورك بنجاح اليوم (${escapeHtml(res.date)}) يا <strong>${escapeHtml(picked.name)}</strong> (${roleLabel}) 🎉`);
+                  inputEl.value = '';
+                  showToast('تم تسجيل حضورك بنجاح', '✅');
+                }
+              });
+            });
+          } else {
+            showQuickAttStatus('error', `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span>الاسم <strong>"${escapeHtml(rawName)}"</strong> غير مسجل في البيانات. يرجى <strong>إنشاء حساب</strong> أولاً.</span>
+                <button type="button" id="quickCreateAccountBtn" class="px-4 py-2 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-xs font-bold shrink-0 transition">
+                  إنشاء حساب جديد ↓
+                </button>
+              </div>
+            `);
+            document.getElementById('quickCreateAccountBtn').addEventListener('click', () => goToCreateAccount(rawName));
+          }
+        } catch (err) {
+          console.error(err);
+          showQuickAttStatus('error', 'حدث خطأ أثناء التحقق من الاسم. يرجى المحاولة مرة أخرى.');
+        } finally {
+          btnEl.disabled = false;
+          btnEl.textContent = '✓ تسجيل حضور';
+        }
       });
 
       loadActivities();
