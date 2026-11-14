@@ -142,6 +142,7 @@
             <button type="button" data-filter="graduate" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700">الخريجون</button>
             <button type="button" data-filter="servant" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700">الخدام</button>
             <button id="exportCsvBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold">📥 تصدير Excel</button>
+            <button id="exportPdfBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs sm:text-sm font-bold">📄 تصدير PDF</button>
           </div>
         </div>
 
@@ -179,6 +180,7 @@
             <div class="flex flex-wrap gap-2">
               <button id="saveAttendanceBtn" type="button" class="px-5 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-sm font-bold shadow-sm transition">💾 حفظ سجل الحضور</button>
               <button id="exportAttendanceCsvBtn" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold transition">📥 تصدير الحضور</button>
+              <button id="exportAttendancePdfBtn" type="button" class="px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold transition">📄 تصدير الحضور PDF</button>
             </div>
           </div>
 
@@ -314,15 +316,15 @@
       // =========================================================================
       // إعدادات Firebase: الصق نفس بيانات مشروعك الموجودة في index.html هنا
       // =========================================================================
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC4iFOF2c8yD7ClJBMOy7RnO1tLAFa2ibg",
-  authDomain: "atend-senior.firebaseapp.com",
-  projectId: "atend-senior",
-  storageBucket: "atend-senior.firebasestorage.app",
-  messagingSenderId: "587040872516",
-  appId: "1:587040872516:web:c7a845565665d2f8f28411",
-  measurementId: "G-LBZTLB0V0M"
-};
+      const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyC4iFOF2c8yD7ClJBMOy7RnO1tLAFa2ibg",
+        authDomain: "atend-senior.firebaseapp.com",
+        projectId: "atend-senior",
+        storageBucket: "atend-senior.firebasestorage.app",
+        messagingSenderId: "587040872516",
+        appId: "1:587040872516:web:c7a845565665d2f8f28411",
+        measurementId: "G-LBZTLB0V0M"
+      };
 
       const REG_COLLECTION = 'graduates_registrations';
       const ACT_COLLECTION = 'graduates_activities';
@@ -580,6 +582,95 @@ const FIREBASE_CONFIG = {
         showToast('تم تصدير السجل', '📥');
       });
 
+      function openRtlPdfReport(reportTitle, subtitleText, statsHtml, tableHeaders, tableRows) {
+        const win = window.open('', '_blank');
+        if (!win) {
+          showToast('يرجى السماح بالنوافذ المنبثقة (Pop-ups) لتصدير PDF', '⚠️');
+          return;
+        }
+        const theadHtml = tableHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+        const tbodyHtml = tableRows.map((row, idx) => `
+          <tr>
+            <td>${idx + 1}</td>
+            ${row.map(cell => `<td>${cell}</td>`).join('')}
+          </tr>
+        `).join('');
+
+        win.document.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeHtml(reportTitle)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Cairo', Tahoma, Arial, sans-serif; color: #1E293B; margin: 24px; background: #fff; }
+    .header { border-bottom: 3px solid #C59B27; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { margin: 0; font-size: 20px; color: #13294B; }
+    .header p { margin: 4px 0 0; font-size: 12px; color: #475569; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; font-size: 12px; font-weight: 700; }
+    .stat-pill { background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 6px 12px; color: #13294B; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #13294B; color: #fff; padding: 8px 10px; text-align: right; font-weight: 700; }
+    td { border: 1px solid #CBD5E1; padding: 7px 10px; vertical-align: top; }
+    tr:nth-child(even) td { background: #F8FAFC; }
+    .badge-ok { color: #047857; font-weight: 800; }
+    .badge-no { color: #64748B; }
+    @media print {
+      body { margin: 10mm; }
+      @page { size: A4; margin: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>خدمة خريجين — كنيسة الشهيد العظيم مارمينا</h1>
+      <p>${escapeHtml(reportTitle)} • ${escapeHtml(subtitleText)}</p>
+    </div>
+    <div style="font-size:11px;color:#64748B;text-align:left;">تاريخ الطباعة: ${escapeHtml(new Date().toLocaleDateString('ar-EG'))}</div>
+  </div>
+  ${statsHtml ? `<div class="stats">${statsHtml}</div>` : ''}
+  <table>
+    <thead><tr><th>م</th>${theadHtml}</tr></thead>
+    <tbody>${tbodyHtml}</tbody>
+  </table>
+  <script>
+    window.onload = function () {
+      setTimeout(function () { window.print(); }, 350);
+    };
+  <\/script>
+</body>
+</html>`);
+        win.document.close();
+      }
+
+      document.getElementById('exportPdfBtn').addEventListener('click', () => {
+        const filtered = records.filter(r => {
+          const matchRole = currentFilter === 'all' || r.role === currentFilter;
+          const q = searchQuery.trim().toLowerCase();
+          const matchQ = !q || [r.name, r.phone, r.degree, r.job, r.committee, r.work].some(v => String(v || '').toLowerCase().includes(q));
+          return matchRole && matchQ;
+        });
+        const filterLabel = currentFilter === 'all' ? 'الكل' : (currentFilter === 'graduate' ? 'الخريجون فقط' : 'الخدام فقط');
+        const statsHtml = `<span class="stat-pill">التصفية: ${escapeHtml(filterLabel)}</span><span class="stat-pill">إجمالي السجلات: ${filtered.length}</span>`;
+        const headers = ['الاسم', 'الصفة', 'الموبايل', 'المؤهل / التخصص', 'سنة التخرج / الخدمة', 'الوظيفة / اللجنة', 'ملاحظات'];
+        const rows = filtered.map(r => {
+          const g = r.role === 'graduate';
+          return [
+            escapeHtml(r.name),
+            g ? 'خريج' : 'خادم',
+            `<span dir="ltr">${escapeHtml(r.phone)}</span>`,
+            escapeHtml(g ? r.degree : r.work),
+            escapeHtml(g ? r.gradYear : (r.experience || '—')),
+            escapeHtml(g ? r.job : r.committee),
+            escapeHtml(r.notes || '—')
+          ];
+        });
+        openRtlPdfReport('سجل الخدام والخريجين', `التصفية: ${filterLabel}`, statsHtml, headers, rows);
+        showToast('تم فتح نافذة طباعة وحفظ PDF', '📄');
+      });
+
       // ==================== ATTENDANCE LOGIC ====================
       const todayStr = new Date().toISOString().slice(0, 10);
       document.getElementById('attDate').value = todayStr;
@@ -701,6 +792,28 @@ const FIREBASE_CONFIG = {
         a.download = 'حضور_خريجين_' + dateVal + '.csv';
         a.click();
         showToast('تم تصدير كشف الحضور', '📥');
+      });
+
+      document.getElementById('exportAttendancePdfBtn').addEventListener('click', () => {
+        const dateVal = document.getElementById('attDate').value || todayStr;
+        const titleVal = document.getElementById('attTitle').value.trim() || 'الاجتماع الأسبوعي للخريجين';
+        const roleFilter = document.getElementById('attRoleFilter').value;
+        const list = records.filter(r => roleFilter === 'all' || r.role === roleFilter);
+        let present = 0;
+        let absent = 0;
+        const rows = list.map(r => {
+          const isPresent = !!currentAttendanceMap[r.id];
+          if (isPresent) present++; else absent++;
+          return [
+            escapeHtml(r.name),
+            r.role === 'graduate' ? 'خريج' : 'خادم',
+            `<span dir="ltr">${escapeHtml(r.phone)}</span>`,
+            isPresent ? '<span class="badge-ok">✓ حاضر</span>' : '<span class="badge-no">غائب</span>'
+          ];
+        });
+        const statsHtml = `<span class="stat-pill">التاريخ: ${escapeHtml(dateVal)}</span><span class="stat-pill">الحاضرون: ${present}</span><span class="stat-pill">الغائبون: ${absent}</span><span class="stat-pill">الإجمالي: ${list.length}</span>`;
+        openRtlPdfReport(`كشف الحضور — ${titleVal}`, `تاريخ اللقاء: ${dateVal}`, statsHtml, ['الاسم', 'الصفة', 'الموبايل', 'الحالة'], rows);
+        showToast('تم فتح كشف الحضور بصيغة PDF', '📄');
       });
 
       // ==================== PUBLISH ACTIVITIES LOGIC ====================
@@ -869,11 +982,11 @@ const FIREBASE_CONFIG = {
         document.getElementById('loginForm').addEventListener('submit', async e => {
           e.preventDefault();
           const errBox = document.getElementById('loginError');
-         try {
+          try {
             errBox.classList.add('hidden');
             await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
           } catch (err) {
-            errBox.textContent = (err.code || '') + ' : ' + (err.message || '');
+            errBox.textContent = 'بيانات الدخول غير صحيحة.';
             errBox.classList.remove('hidden');
           }
         });
