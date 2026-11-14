@@ -686,6 +686,27 @@
         renderAttendanceTable();
       }
 
+function getWhatsAppFollowUpUrl(phone, name) {
+        let clean = String(phone || '').replace(/[\s\-+]/g, '');
+        if (/^01[0-2,5]\d{8}$/.test(clean)) {
+          clean = '2' + clean;
+        }
+        const firstName = String(name || '').trim().split(/\s+/)[0] || '';
+        const msg = `سلام ونعمة يا ${firstName} 🤍 مفتقدينك جداً في اجتماع الخريجين بكنيسة الشهيد العظيم مارمينا، حبيت أطمن عليك وبنتمنى نشوفك اللقاء الجاي!`;
+        return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
+      }
+
+      function getMissedSessionsCount(memberId) {
+        const sessions = Object.values(attendanceSessions);
+        if (!sessions.length) return 0;
+        let missed = 0;
+        sessions.forEach(s => {
+          const presentList = Array.isArray(s.presentIds) ? s.presentIds : [];
+          if (!presentList.includes(memberId)) missed++;
+        });
+        return missed;
+      }
+
       function renderAttendanceTable() {
         const roleFilter = document.getElementById('attRoleFilter').value;
         const list = records.filter(r => roleFilter === 'all' || r.role === roleFilter);
@@ -697,15 +718,28 @@
         tbody.innerHTML = list.map(r => {
           const isPresent = !!currentAttendanceMap[r.id];
           if (isPresent) presentCount++; else absentCount++;
+          const missedCount = getMissedSessionsCount(r.id);
+          const waUrl = getWhatsAppFollowUpUrl(r.phone, r.name);
+
           return `
             <tr class="hover:bg-slate-50">
-              <td class="py-3 px-4 font-bold text-[#13294B]">${escapeHtml(r.name)}</td>
+              <td class="py-3 px-4 font-bold text-[#13294B]">
+                ${escapeHtml(r.name)}
+                ${!isPresent && missedCount >= 2 ? `<span class="mr-2 px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">غاب ${missedCount} لقاءات</span>` : ''}
+              </td>
               <td class="py-3 px-4 text-xs">${r.role === 'graduate' ? 'خريج' : 'خادم'}</td>
               <td class="py-3 px-4 font-mono text-xs" dir="ltr">${escapeHtml(r.phone)}</td>
               <td class="py-3 px-4 text-center">
-                <button type="button" data-toggle-att="${escapeHtml(r.id)}" class="px-4 py-1.5 rounded-xl text-xs font-bold transition ${isPresent ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
-                  ${isPresent ? '✓ حاضر' : 'غائب'}
-                </button>
+                <div class="inline-flex items-center justify-center gap-2 flex-wrap">
+                  <button type="button" data-toggle-att="${escapeHtml(r.id)}" class="px-4 py-1.5 rounded-xl text-xs font-bold transition ${isPresent ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                    ${isPresent ? '✓ حاضر' : 'غائب'}
+                  </button>
+                  ${!isPresent && r.phone ? `
+                    <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition">
+                      💬 افتقاد واتس
+                    </a>
+                  ` : ''}
+                </div>
               </td>
             </tr>
           `;
