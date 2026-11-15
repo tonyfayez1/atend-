@@ -830,15 +830,93 @@
         if (e.target === e.currentTarget) closeModal();
       });
 
-      let activeAttendanceConfig = {
+let activeAttendanceConfig = {
         date: new Date().toISOString().slice(0, 10),
-        title: 'الاجتماع الأسبوعي للخريجين'
+        title: 'الاجتماع الأسبوعي للخريجين',
+        restrictTime: false,
+        dayOfWeek: 'any',
+        startTime: '',
+        endTime: ''
       };
+
+      const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+      function formatTime12Ar(hhmm) {
+        if (!hhmm || !hhmm.includes(':')) return hhmm || '';
+        const [hStr, mStr] = hhmm.split(':');
+        let h = parseInt(hStr, 10);
+        const period = h >= 12 ? 'مساءً' : 'صباحاً';
+        h = h % 12 || 12;
+        return `${h}:${mStr} ${period}`;
+      }
+
+      function checkAttendanceWindowStatus() {
+        if (!activeAttendanceConfig.restrictTime || !activeAttendanceConfig.startTime || !activeAttendanceConfig.endTime) {
+          return { open: true, reason: '' };
+        }
+        const now = new Date();
+        const dayCfg = String(activeAttendanceConfig.dayOfWeek || 'any');
+        if (dayCfg !== 'any' && String(now.getDay()) !== dayCfg) {
+          const dayName = ARABIC_DAYS[parseInt(dayCfg, 10)] || '';
+          return {
+            open: false,
+            reason: `تسجيل الحضور متاح فقط يوم <strong>${dayName}</strong> من الساعة <strong>${formatTime12Ar(activeAttendanceConfig.startTime)}</strong> إلى <strong>${formatTime12Ar(activeAttendanceConfig.endTime)}</strong>.`
+          };
+        }
+        const [sh, sm] = activeAttendanceConfig.startTime.split(':').map(Number);
+        const [eh, em] = activeAttendanceConfig.endTime.split(':').map(Number);
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        const startMins = sh * 60 + sm;
+        const endMins = eh * 60 + em;
+
+        const inWindow = startMins <= endMins
+          ? (nowMins >= startMins && nowMins <= endMins)
+          : (nowMins >= startMins || nowMins <= endMins);
+
+        if (!inWindow) {
+          const dayPart = dayCfg !== 'any' ? `يوم <strong>${ARABIC_DAYS[parseInt(dayCfg, 10)]}</strong> ` : '';
+          return {
+            open: false,
+            reason: `تسجيل الحضور مغلق حالياً — متاح ${dayPart}من الساعة <strong>${formatTime12Ar(activeAttendanceConfig.startTime)}</strong> إلى <strong>${formatTime12Ar(activeAttendanceConfig.endTime)}</strong>.`
+          };
+        }
+        return { open: true, reason: '' };
+      }
+
+      function applyAttendanceWindowUI() {
+        const inputEl = document.getElementById('quickAttName');
+        const btnEl = document.getElementById('quickAttBtn');
+        const statusEl = document.getElementById('quickAttStatus');
+        const check = checkAttendanceWindowStatus();
+        if (!check.open) {
+          inputEl.disabled = true;
+          inputEl.classList.add('bg-slate-100', 'cursor-not-allowed');
+          btnEl.disabled = true;
+          btnEl.classList.add('opacity-50', 'cursor-not-allowed');
+          statusEl.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-rose-50', 'border-rose-200', 'text-rose-800', 'bg-sky-50', 'border-sky-200', 'text-sky-800');
+          statusEl.classList.add('border', 'bg-amber-50', 'border-amber-200', 'text-amber-900');
+          statusEl.innerHTML = `⏰ ${check.reason}`;
+        } else {
+          inputEl.disabled = false;
+          inputEl.classList.remove('bg-slate-100', 'cursor-not-allowed');
+          btnEl.disabled = false;
+          btnEl.classList.remove('opacity-50', 'cursor-not-allowed');
+          if (statusEl.innerHTML.includes('⏰')) {
+            statusEl.classList.add('hidden');
+            statusEl.innerHTML = '';
+          }
+        }
+      }
 
       function updateActiveSessionBadge() {
         const badge = document.getElementById('activeSessionBadge');
         if (!badge) return;
-        badge.innerHTML = `📅 ${escapeHtml(activeAttendanceConfig.title)} — <span dir="ltr">${escapeHtml(activeAttendanceConfig.date)}</span>`;
+        let timeNote = '';
+        if (activeAttendanceConfig.restrictTime && activeAttendanceConfig.startTime && activeAttendanceConfig.endTime) {
+          timeNote = ` (${formatTime12Ar(activeAttendanceConfig.startTime)} - ${formatTime12Ar(activeAttendanceConfig.endTime)})`;
+        }
+        badge.innerHTML = `📅 ${escapeHtml(activeAttendanceConfig.title)} — <span dir="ltr">${escapeHtml(activeAttendanceConfig.date)}</span>${escapeHtml(timeNote)}`;
+        applyAttendanceWindowUI();
       }
 
       async function loadActiveAttendanceConfig() {
@@ -846,9 +924,14 @@
           try {
             const docSnap = await db.collection(SETTINGS_COLLECTION).doc('attendance_config').get();
             if (docSnap.exists && docSnap.data().date) {
+              const d = docSnap.data();
               activeAttendanceConfig = {
-                date: docSnap.data().date,
-                title: docSnap.data().title || 'الاجتماع الأسبوعي للخريجين'
+                date: d.date,
+                title: d.title || 'الاجتماع الأسبوعي للخريجين',
+                restrictTime: !!d.restrictTime,
+                dayOfWeek: d.dayOfWeek !== undefined ? String(d.dayOfWeek) : 'any',
+                startTime: d.startTime || '',
+                endTime: d.endTime || ''
               };
               updateActiveSessionBadge();
               return;
@@ -864,7 +947,11 @@
             if (parsed && parsed.date) {
               activeAttendanceConfig = {
                 date: parsed.date,
-                title: parsed.title || 'الاجتماع الأسبوعي للخريجين'
+                title: parsed.title || 'الاجتماع الأسبوعي للخريجين',
+                restrictTime: !!parsed.restrictTime,
+                dayOfWeek: parsed.dayOfWeek !== undefined ? String(parsed.dayOfWeek) : 'any',
+                startTime: parsed.startTime || '',
+                endTime: parsed.endTime || ''
               };
             }
           }
@@ -872,6 +959,7 @@
         updateActiveSessionBadge();
       }
 
+      setInterval(applyAttendanceWindowUI, 30000);
       function normalizeArabicName(str) {
         return String(str || '')
           .trim()
@@ -970,6 +1058,11 @@
 
       document.getElementById('quickAttendanceForm').addEventListener('submit', async function (e) {
         e.preventDefault();
+        const windowCheck = checkAttendanceWindowStatus();
+        if (!windowCheck.open) {
+          applyAttendanceWindowUI();
+          return;
+        }
         const inputEl = document.getElementById('quickAttName');
         const btnEl = document.getElementById('quickAttBtn');
         const rawName = inputEl.value.trim();
