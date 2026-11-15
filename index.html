@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>خدمة خريجين — كنيسة الشهيد العظيم مارمينا</title>
+  <title>خدمة خريجيين — كنيسة الشهيد العظيم مارمينا</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -94,12 +94,12 @@
       <div class="max-w-2xl space-y-5">
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-amber-300/30 text-amber-200 text-xs sm:text-sm font-semibold">
           <span>✝</span>
-          <span>أسرة خدمة خريجين — كنيسة الشهيد العظيم مارمينا</span>
+          <span>أسرة ميتابكالوريا— كنيسة الشهيد العظيم مارمينا</span>
         </div>
 
         <h1 class="text-3xl sm:text-5xl font-extrabold leading-tight tracking-tight">
           شركة روحية وعملية متجددة
-          <span class="block text-[#EAB308] mt-1">اجتماع الخريجين والخريجات</span>
+          <span class="block text-[#EAB308] mt-1">اجتماع ميتابكالوريا</span>
         </h1>
 
         <p class="font-amiri text-lg sm:text-2xl text-amber-100/95 leading-relaxed">
@@ -107,7 +107,7 @@
         </p>
 
         <p class="text-sm sm:text-base text-slate-200 leading-relaxed">
-          سجّل بياناتك للانضمام إلى أسرة الخريجين بالكنيسة، وتابع أحدث الأخبار والأنشطة والخلوات الروحية ومواعيد الاجتماعات أولاً بأول.
+          سجّل بياناتك للانضمام إلى أسرة ميتابكالوريا بالكنيسة، وتابع أحدث الأخبار والأنشطة والخلوات الروحية ومواعيد الاجتماعات أولاً بأول.
         </p>
 
         <div class="flex flex-wrap gap-3 pt-2">
@@ -160,7 +160,7 @@
 
         <!-- Prompt for New Users -->
         <div id="newUserPromptBox" class="mt-6 pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
-          <p class="text-sm font-semibold text-slate-600">لو لم تكن مسجلاً من قبل في خدمة الخريجين؟</p>
+          <p class="text-sm font-semibold text-slate-600">لو لم تكن مسجلاً من قبل في خدمة ميتابكالوريا؟</p>
           <button id="openNewRegBtn" type="button" class="px-5 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#1e3a66] text-white text-sm font-bold shadow-sm transition shrink-0">
             📝 اضغط هنا للتسجيل (خادم أو مخدوم)
           </button>
@@ -308,7 +308,7 @@
       <form id="servantForm" class="hidden bg-white rounded-3xl shadow-md border border-emerald-200/70 p-6 sm:p-8 max-w-4xl mx-auto space-y-6" novalidate>
         <div class="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <h3 class="text-lg sm:text-xl font-bold text-[#13294B]">بيانات الخادم / الخادمة (خدمة خريجين)</h3>
+            <h3 class="text-lg sm:text-xl font-bold text-[#13294B]">بيانات الخادم / الخادمة (خدمة ميتابكالوريا)</h3>
             <p class="text-xs sm:text-sm text-slate-500">الحقول المميزة بـ <span class="text-rose-600 font-bold">*</span> مطلوبة</p>
           </div>
           <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">خادم</span>
@@ -438,7 +438,7 @@
   <!-- Footer -->
   <footer class="bg-[#13294B] text-slate-300 py-7 mt-10">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-      <p class="font-semibold text-white">✝ خدمة خريجين — كنيسة الشهيد العظيم مارمينا</p>
+      <p class="font-semibold text-white">✝ خدمة ميتابكالوريا للخريجيين — كنيسة الشهيد العظيم مارمينا</p>
       <div class="flex items-center gap-4">
         <span class="text-slate-400">بوابة التسجيل والأخبار</span>
         <a href="admin.html" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 font-bold transition">لوحة الإدارة 🔐</a>
@@ -503,7 +503,7 @@
         {
           id: 'act-1',
           type: 'موعد اجتماع',
-          title: 'الاجتماع الأسبوعي لأسرة الخريجين',
+          title: 'الاجتماع الأسبوعي لأسرة ميتابكالوريا',
           date: 'الجمعة أسبوعياً',
           time: '7:30 مساءً',
           location: 'قاعة مارمينا الرئيسية بالكنيسة',
@@ -725,7 +725,7 @@
           this.reset();
           openModal(
             'تم تسجيلك بنجاح في خدمة خريجين! 🎉',
-            `<p class="leading-relaxed">أهلاً بك يا <strong>${escapeHtml(name)}</strong> في أسرة الخريجين بكنيسة الشهيد العظيم مارمينا. تم إرسال بياناتك لإدارة الخدمة بنجاح.</p>`,
+            `<p class="leading-relaxed">أهلاً بك يا <strong>${escapeHtml(name)}</strong> في أسرة ميتابكالوريا بكنيسة الشهيد العظيم مارمينا. تم إرسال بياناتك لإدارة الخدمة بنجاح.</p>`,
             `<button type="button" id="afterRegClose" class="px-5 py-2 rounded-xl bg-[#13294B] text-white font-bold text-sm">حسناً</button>`
           );
           document.getElementById('afterRegClose').addEventListener('click', closeModal);
