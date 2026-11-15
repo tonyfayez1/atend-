@@ -242,6 +242,7 @@
             <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">الحاضرون: <span id="attPresentCount">0</span></span>
             <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">الغائبون / غير محدد: <span id="attAbsentCount">0</span></span>
             <button id="markAllPresentBtn" type="button" class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">تحديد الكل حاضر ✓</button>
+          <button id="bulkFollowUpBtn" type="button" class="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white transition">💬 افتقاد جماعي للغائبين</button>
           </div>
 
           <div class="overflow-x-auto border border-slate-200 rounded-2xl">
@@ -925,7 +926,97 @@ function getWhatsAppFollowUpUrl(phone, name) {
         });
         renderAttendanceTable();
       });
+document.getElementById('bulkFollowUpBtn').addEventListener('click', () => {
+        const roleFilter = document.getElementById('attRoleFilter').value;
+        const absentList = records.filter(r =>
+          (roleFilter === 'all' || r.role === roleFilter) &&
+          !currentAttendanceMap[r.id] &&
+          r.phone
+        );
 
+        if (!absentList.length) {
+          showToast('لا يوجد غائبين بأرقام هواتف حالياً ✓', '🎉');
+          return;
+        }
+
+        let currentIdx = 0;
+        const sentSet = new Set();
+        const generalMsg = 'سلام ونعمة 🤍 مفتقدينكم جداً في اجتماع الخريجين بكنيسة الشهيد العظيم مارمينا، حبينا نطمن عليكم وبنتمنى نشوفكم اللقاء الجاي!';
+
+        const renderQueueRows = () => absentList.map((r, idx) => {
+          const waUrl = getWhatsAppFollowUpUrl(r.phone, r.name);
+          const done = sentSet.has(r.id);
+          return `
+            <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border ${done ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}">
+              <div class="text-xs">
+                <span class="font-bold text-[#13294B]">${idx + 1}. ${escapeHtml(r.name)}</span>
+                <span class="text-slate-500 font-mono mr-2" dir="ltr">${escapeHtml(r.phone)}</span>
+              </div>
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" data-bulk-idx="${idx}" class="px-3 py-1 rounded-lg text-xs font-bold ${done ? 'bg-emerald-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}">
+                ${done ? '✓ تم الفتح' : '💬 إرسال'}
+              </a>
+            </div>
+          `;
+        }).join('');
+
+        openModal(
+          `افتقاد جماعي للغائبين (${absentList.length})`,
+          `
+            <div class="space-y-3">
+              <div class="flex flex-wrap gap-2">
+                <button type="button" id="bulkOpenNextBtn" class="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold">▶ فتح التالي في واتساب (1/${absentList.length})</button>
+                <button type="button" id="bulkCopyMsgBtn" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">📋 نسخ الرسالة</button>
+                <button type="button" id="bulkCopyPhonesBtn" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">📞 نسخ الأرقام (${absentList.length})</button>
+              </div>
+              <div id="bulkQueueList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                ${renderQueueRows()}
+              </div>
+            </div>
+          `,
+          `<button type="button" id="bulkCloseBtn" class="px-4 py-2 rounded-xl bg-[#13294B] text-white text-sm font-bold">إغلاق</button>`
+        );
+
+        const refreshQueue = () => {
+          document.getElementById('bulkQueueList').innerHTML = renderQueueRows();
+          const nextBtn = document.getElementById('bulkOpenNextBtn');
+          if (currentIdx < absentList.length) {
+            nextBtn.textContent = `▶ فتح التالي في واتساب (${currentIdx + 1}/${absentList.length})`;
+          } else {
+            nextBtn.textContent = '✓ تم فتح جميع الغائبين';
+          }
+        };
+
+        document.getElementById('bulkOpenNextBtn').addEventListener('click', () => {
+          if (currentIdx >= absentList.length) currentIdx = 0;
+          const person = absentList[currentIdx];
+          sentSet.add(person.id);
+          window.open(getWhatsAppFollowUpUrl(person.phone, person.name), '_blank', 'noopener,noreferrer');
+          currentIdx++;
+          refreshQueue();
+        });
+
+        document.getElementById('bulkQueueList').addEventListener('click', e => {
+          const link = e.target.closest('[data-bulk-idx]');
+          if (!link) return;
+          const idx = parseInt(link.getAttribute('data-bulk-idx'), 10);
+          if (absentList[idx]) {
+            sentSet.add(absentList[idx].id);
+            setTimeout(refreshQueue, 150);
+          }
+        });
+
+        document.getElementById('bulkCopyMsgBtn').addEventListener('click', async () => {
+          await navigator.clipboard.writeText(generalMsg);
+          showToast('تم نسخ رسالة الافتقاد', '📋');
+        });
+
+        document.getElementById('bulkCopyPhonesBtn').addEventListener('click', async () => {
+          await navigator.clipboard.writeText(absentList.map(r => r.phone).join('\n'));
+          showToast('تم نسخ كل أرقام الغائبين', '📞');
+        });
+
+        document.getElementById('bulkCloseBtn').addEventListener('click', closeModal);
+      });
       document.getElementById('saveAttendanceBtn').addEventListener('click', async () => {
         const dateVal = document.getElementById('attDate').value;
         const titleVal = document.getElementById('attTitle').value.trim() || 'الاجتماع الأسبوعي';
