@@ -508,9 +508,10 @@
         }).join('');
       }
 
-      async function updateRecordInStore(id, updates) {
-        if (db) await db.collection(REG_COLLECTION).doc(id).update(updates);
+     async function updateRecordInStore(id, updates) {
         const idx = records.findIndex(r => r.id === id);
+        const targetDocId = (idx !== -1 && records[idx]._docId) ? records[idx]._docId : id;
+        if (db) await db.collection(REG_COLLECTION).doc(targetDocId).update(updates);
         if (idx !== -1) records[idx] = Object.assign({}, records[idx], updates);
         if (!db) localStorage.setItem(STORAGE_REG_KEY, JSON.stringify(records));
         updateStats();
@@ -518,15 +519,23 @@
         renderAttendanceTable();
       }
 
-      async function deleteRecordFromStore(id) {
-        if (db) await db.collection(REG_COLLECTION).doc(id).delete();
-        records = records.filter(r => r.id !== id);
-        if (!db) localStorage.setItem(STORAGE_REG_KEY, JSON.stringify(records));
-        updateStats();
-        renderDirectory();
-        renderAttendanceTable();
+async function deleteRecordFromStore(id) {
+        const target = records.find(r => r.id === id);
+        const targetDocId = (target && target._docId) ? target._docId : id;
+        try {
+          if (db) await db.collection(REG_COLLECTION).doc(targetDocId).delete();
+          records = records.filter(r => r.id !== id);
+          if (!db) localStorage.setItem(STORAGE_REG_KEY, JSON.stringify(records));
+          updateStats();
+          renderDirectory();
+          renderAttendanceTable();
+          return true;
+        } catch (err) {
+          console.error("Firestore delete error:", err);
+          showToast("تعذر الحذف من قاعدة البيانات — تأكد من الصلاحيات", "⚠️");
+          return false;
+        }
       }
-
       document.getElementById('directoryBody').addEventListener('click', function (e) {
         const viewBtn = e.target.closest('[data-view-id]');
      const STANDARD_INTERESTS = [
@@ -681,10 +690,10 @@
           const id = delBtn.getAttribute('data-del-id');
           openModal('تأكيد الحذف', '<p>هل أنت متأكد من حذف هذا السجل؟</p>', `<button id="cDel" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">إلغاء</button><button id="yDel" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-bold">حذف</button>`);
           document.getElementById('cDel').addEventListener('click', closeModal);
-          document.getElementById('yDel').addEventListener('click', async () => {
-            await deleteRecordFromStore(id);
+         document.getElementById('yDel').addEventListener('click', async () => {
+            const ok = await deleteRecordFromStore(id);
             closeModal();
-            showToast('تم الحذف', '🗑️');
+            if (ok) showToast('تم الحذف من قاعدة البيانات', '🗑️');
           });
         }
       });
@@ -1227,14 +1236,21 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
           document.getElementById('pubCancelEditBtn').classList.remove('hidden');
           return;
         }
-        const delBtn = e.target.closest('[data-del-act]');
+    const delBtn = e.target.closest('[data-del-act]');
         if (delBtn) {
           const id = delBtn.getAttribute('data-del-act');
-          if (db) await db.collection(ACT_COLLECTION).doc(id).delete();
-          activities = activities.filter(x => x.id !== id);
-          if (!db) localStorage.setItem(STORAGE_ACT_KEY, JSON.stringify(activities));
-          renderPublishedList();
-          showToast('تم حذف المنشور', '🗑️');
+          const actItem = activities.find(x => x.id === id);
+          const actDocId = (actItem && actItem._docId) ? actItem._docId : id;
+          try {
+            if (db) await db.collection(ACT_COLLECTION).doc(actDocId).delete();
+            activities = activities.filter(x => x.id !== id);
+            if (!db) localStorage.setItem(STORAGE_ACT_KEY, JSON.stringify(activities));
+            renderPublishedList();
+            showToast('تم حذف المنشور من قاعدة البيانات', '🗑️');
+          } catch (err) {
+            console.error("Activity delete error:", err);
+            showToast('تعذر حذف المنشور من قاعدة البيانات', '⚠️');
+          }
         }
       });
 
@@ -1247,8 +1263,8 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
               db.collection(ACT_COLLECTION).orderBy('createdAt', 'desc').get(),
               db.collection(ATT_COLLECTION).get()
             ]);
-            records = regSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-            activities = actSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+          records = regSnap.docs.map(d => Object.assign({ id: d.id }, d.data(), { _docId: d.id }));
+            activities = actSnap.docs.map(d => Object.assign({ id: d.id }, d.data(), { _docId: d.id }));
             attendanceSessions = {};
             attSnap.docs.forEach(d => { attendanceSessions[d.id] = d.data(); });
           } catch (err) {
