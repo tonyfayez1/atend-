@@ -33,12 +33,93 @@
       background-color: #F1F5F9;
       color: #13294B;
     }
+    .zipper-teeth {
+      background-image: repeating-linear-gradient(
+        to bottom,
+        #C59B27 0px,
+        #C59B27 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+    @keyframes gentleBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(6px); }
+    }
+    .zip-bounce {
+      animation: gentleBounce 1.6s ease-in-out infinite;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
+<!-- First-Visit Church Zipper Gift Overlay -->
+  <div id="welcomeZipperOverlay" class="hidden fixed inset-0 z-50 overflow-hidden select-none touch-none">
+    <!-- Revealed Welcome Card Behind the Zipper -->
+    <div class="absolute inset-0 bg-[#FAF7F2] flex items-center justify-center p-6">
+      <div id="zipWelcomeCard" class="max-w-lg w-full bg-white rounded-3xl shadow-2xl border-2 border-[#C59B27]/50 p-7 sm:p-9 text-center space-y-5 transition-all duration-500 scale-95 opacity-0">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-[#13294B] text-[#C59B27] flex items-center justify-center shadow-md">
+          <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v20M5 9h14" />
+            <circle cx="12" cy="9" r="2" fill="currentColor" />
+            <path d="M10 2h4M10 22h4M5 7v4M19 7v4" />
+          </svg>
+        </div>
+        <div class="space-y-2">
+          <span class="inline-block px-3.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold">🎁 هدية الترحيب</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-[#13294B] leading-snug">أهلاً بك في أسرة ميتابكالوريا</h2>
+          <p class="text-sm sm:text-base text-slate-600 leading-relaxed">
+            نورت بيتك وخدمتك في <strong class="text-[#13294B]">كنيسة الشهيد العظيم مارمينا</strong>! فرحانين بوجودك معانا في رحلة نمو روحي، وشركة صادقة، وخدمة مثمرة.
+          </p>
+        </div>
+        <button id="enterSiteFromZipBtn" type="button" class="w-full sm:w-auto px-8 py-3 rounded-2xl bg-[#13294B] hover:bg-[#1e3a66] text-white font-bold text-sm sm:text-base shadow-md transition">
+          دخول للموقع ✓
+        </button>
+      </div>
+    </div>
 
+    <!-- Left & Right Zipper Panels -->
+    <div id="zipLeftPanel" class="absolute top-0 bottom-0 left-0 w-1/2 bg-[#13294B] border-r-2 border-[#C59B27]/60 transition-transform duration-500 ease-out flex items-center justify-start pl-6">
+      <div class="hidden sm:block text-amber-200/30 text-sm font-bold">✝ خدمة خريجين</div>
+    </div>
+    <div id="zipRightPanel" class="absolute top-0 bottom-0 right-0 w-1/2 bg-[#13294B] border-l-2 border-[#C59B27]/60 transition-transform duration-500 ease-out flex items-center justify-end pr-6">
+      <div class="hidden sm:block text-amber-200/30 text-sm font-bold">أسرة ميتابكالوريا ✝</div>
+    </div>
+
+    <!-- Center Zipper Track -->
+    <div id="zipTrack" class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-3 zipper-teeth pointer-events-none transition-opacity duration-300"></div>
+
+    <!-- Prompt Banner at Top -->
+    <div id="zipPromptBadge" class="absolute top-8 left-1/2 -translate-x-1/2 bg-white/95 text-[#13294B] px-5 py-2.5 rounded-full shadow-lg border border-[#C59B27] text-xs sm:text-sm font-extrabold whitespace-nowrap pointer-events-none">
+      🎁 افتح السوستة (اسحب للأسفل أو اضغط على الكنيسة)
+    </div>
+
+    <!-- Church-Shaped Zipper Puller -->
+    <button id="zipperPuller" type="button" aria-label="افتح السوستة" class="absolute left-1/2 -translate-x-1/2 top-24 z-10 cursor-grab active:cursor-grabbing focus:outline-none group">
+      <div class="zip-bounce flex flex-col items-center">
+        <!-- Church SVG Puller -->
+        <div class="w-20 h-24 rounded-2xl bg-gradient-to-b from-[#FAF7F2] to-amber-100 border-2 border-[#C59B27] shadow-2xl flex flex-col items-center justify-center p-2 group-hover:scale-105 transition">
+          <svg class="w-14 h-16 text-[#13294B]" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- Cross on top -->
+            <path d="M32 4V16M26 9H38" stroke="#C59B27" stroke-width="3.5" stroke-linecap="round" />
+            <!-- Main Dome -->
+            <path d="M18 30C18 22 24 16 32 16C40 16 46 22 46 30H18Z" fill="#13294B" />
+            <!-- Side Towers -->
+            <rect x="8" y="28" width="10" height="28" rx="1.5" fill="#13294B" />
+            <rect x="46" y="28" width="10" height="28" rx="1.5" fill="#13294B" />
+            <path d="M13 20V28M10 23H16" stroke="#C59B27" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M51 20V28M48 23H54" stroke="#C59B27" stroke-width="2.2" stroke-linecap="round" />
+            <!-- Church Body -->
+            <rect x="18" y="30" width="28" height="26" fill="#1e3a66" />
+            <!-- Arched Door -->
+            <path d="M27 56V43C27 40.2 29.2 38 32 38C34.8 38 37 40.2 37 43V56H27Z" fill="#C59B27" />
+          </svg>
+          <span class="text-[10px] font-extrabold text-[#13294B] mt-0.5">اسحب ↓</span>
+        </div>
+      </div>
+    </button>
+  </div>
   <!-- Top Navigation -->
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-amber-200/70 shadow-sm">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -1149,7 +1230,88 @@ let activeAttendanceConfig = {
           btnEl.textContent = '✓ تسجيل حضور';
         }
       });
+(function initFirstVisitZipper() {
+        const ZIP_KEY = 'st_mina_welcome_zipper_seen_v1';
+        try {
+          if (localStorage.getItem(ZIP_KEY)) return;
+        } catch (e) {}
 
+        const overlay = document.getElementById('welcomeZipperOverlay');
+        const puller = document.getElementById('zipperPuller');
+        const leftPanel = document.getElementById('zipLeftPanel');
+        const rightPanel = document.getElementById('zipRightPanel');
+        const track = document.getElementById('zipTrack');
+        const promptBadge = document.getElementById('zipPromptBadge');
+        const welcomeCard = document.getElementById('zipWelcomeCard');
+        const enterBtn = document.getElementById('enterSiteFromZipBtn');
+        if (!overlay || !puller) return;
+
+        overlay.classList.remove('hidden');
+
+        let isDragging = false;
+        let startY = 0;
+        let startTop = 96;
+        let hasOpened = false;
+
+        function completeUnzip() {
+          if (hasOpened) return;
+          hasOpened = true;
+          puller.style.transition = 'top 0.45s ease, opacity 0.35s ease';
+          puller.style.top = window.innerHeight + 'px';
+          puller.style.opacity = '0';
+          track.style.opacity = '0';
+          promptBadge.style.opacity = '0';
+          leftPanel.style.transform = 'translateX(-100%)';
+          rightPanel.style.transform = 'translateX(100%)';
+          setTimeout(() => {
+            welcomeCard.classList.remove('scale-95', 'opacity-0');
+            welcomeCard.classList.add('scale-100', 'opacity-100');
+          }, 220);
+        }
+
+        puller.addEventListener('pointerdown', (e) => {
+          if (hasOpened) return;
+          isDragging = true;
+          startY = e.clientY;
+          startTop = puller.offsetTop;
+          puller.setPointerCapture(e.pointerId);
+        });
+
+        puller.addEventListener('pointermove', (e) => {
+          if (!isDragging || hasOpened) return;
+          const dy = Math.max(0, e.clientY - startY);
+          const maxPull = window.innerHeight * 0.55;
+          const progress = Math.min(1, dy / maxPull);
+          puller.style.top = (startTop + dy) + 'px';
+          leftPanel.style.transform = `translateX(-${progress * 55}%)`;
+          rightPanel.style.transform = `translateX(${progress * 55}%)`;
+          if (progress >= 0.45) {
+            isDragging = false;
+            completeUnzip();
+          }
+        });
+
+        puller.addEventListener('pointerup', (e) => {
+          if (!isDragging || hasOpened) return;
+          isDragging = false;
+          const dy = e.clientY - startY;
+          if (dy < 12) {
+            completeUnzip();
+          } else {
+            puller.style.top = '96px';
+            leftPanel.style.transform = 'translateX(0)';
+            rightPanel.style.transform = 'translateX(0)';
+          }
+        });
+
+        enterBtn.addEventListener('click', () => {
+          try {
+            localStorage.setItem(ZIP_KEY, '1');
+          } catch (e) {}
+          overlay.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+          setTimeout(() => overlay.remove(), 300);
+        });
+      })();
       loadActiveAttendanceConfig();
       loadActivities();
     })();
