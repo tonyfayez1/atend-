@@ -111,7 +111,7 @@
           <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-3">
             <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl">💼</div>
             <div>
-              <p class="text-xs text-slate-500 font-semibold">الخريجون</p>
+              <p class="text-xs text-slate-500 font-semibold">الخريجين</p>
               <p id="statGraduates" class="text-2xl font-extrabold text-amber-700">0</p>
             </div>
           </div>
@@ -196,7 +196,7 @@
               <label for="attRoleFilter" class="block text-xs font-bold text-slate-700 mb-1">عرض</label>
               <select id="attRoleFilter" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]">
                 <option value="all">الكل (خدام وخريجين)</option>
-                <option value="graduate">الخريجون (المخدومون) فقط</option>
+                <option value="graduate">الخريجين (المخدومون) فقط</option>
                 <option value="servant">الخدام فقط</option>
               </select>
             </div>
@@ -384,12 +384,7 @@
         }
       }
 
-      const defaultSamples = [
-        { id: 'sample-1', role: 'graduate', name: 'كيرلس هاني بولس', phone: '01204567891', degree: 'بكالوريوس حاسبات ومعلومات', gradYear: '2024', job: 'مهندس برمجيات', marital: 'أعزب / آنسة', address: 'منطقة الكنيسة', father: 'أبونا يوحنا', notes: '', isSample: true, createdAt: '2026-11-10T10:00:00Z' },
-        { id: 'sample-2', role: 'graduate', name: 'مارينا عاطف سمير', phone: '01098765432', degree: 'بكالوريوس صيدلة', gradYear: '2023', job: 'صيدلانية', marital: 'خاطب / مخطوبة', address: 'وسط البلد', father: 'أبونا بيشوي', notes: '', isSample: true, createdAt: '2026-11-11T14:30:00Z' },
-        { id: 'sample-3', role: 'servant', name: 'مينا وجيه لطفي', phone: '01223344556', committee: 'أسرة الافتقاد والمتابعة', experience: 'من 3 إلى 5 سنوات', work: 'مهندس مدني', father: 'أبونا مارك', notes: '', isSample: true, createdAt: '2026-11-09T18:00:00Z' },
-        { id: 'sample-4', role: 'servant', name: 'دميانة عادل رزق', phone: '01112223334', committee: 'إعداد المناهج ودراسة الكتاب', experience: 'من 1 إلى 3 سنوات', work: 'أخصائية موارد بشرية', father: 'أبونا يوحنا', notes: '', isSample: true, createdAt: '2026-11-10T16:20:00Z' }
-      ];
+  const defaultSamples = [];
 
       const defaultActivities = [
         { id: 'act-1', type: 'موعد اجتماع', title: 'الاجتماع الأسبوعي لأسرة الخريجين', date: 'الجمعة أسبوعياً', time: '7:30 مساءً', location: 'قاعة مارمينا الرئيسية بالكنيسة', details: 'دراسة كتابية ومناقشة موضوعات الحياة العملية والأسرة المسيحية.', createdAt: '2026-11-10T12:00:00Z' },
@@ -765,7 +760,7 @@
 <body>
   <div class="header">
     <div>
-      <h1>خدمة خريجين — كنيسة الشهيد العظيم مارمينا</h1>
+      <h1>خدمة خريجين (ميتابكالوريا)— كنيسة الشهيد العظيم مارمينا</h1>
       <p>${escapeHtml(reportTitle)} • ${escapeHtml(subtitleText)}</p>
     </div>
     <div style="font-size:11px;color:#64748B;text-align:left;">تاريخ الطباعة: ${escapeHtml(new Date().toLocaleDateString('ar-EG'))}</div>
@@ -792,7 +787,7 @@
           const matchQ = !q || [r.name, r.phone, r.degree, r.job, r.committee, r.work].some(v => String(v || '').toLowerCase().includes(q));
           return matchRole && matchQ;
         });
-        const filterLabel = currentFilter === 'all' ? 'الكل' : (currentFilter === 'graduate' ? 'الخريجون فقط' : 'الخدام فقط');
+        const filterLabel = currentFilter === 'all' ? 'الكل' : (currentFilter === 'graduate' ? 'الخريجين فقط' : 'الخدام فقط');
         const statsHtml = `<span class="stat-pill">التصفية: ${escapeHtml(filterLabel)}</span><span class="stat-pill">إجمالي السجلات: ${filtered.length}</span>`;
         const headers = ['الاسم', 'الصفة', 'الموبايل', 'المؤهل / التخصص', 'سنة التخرج / الخدمة', 'الوظيفة / اللجنة', 'ملاحظات'];
         const rows = filtered.map(r => {
@@ -831,7 +826,7 @@ function getWhatsAppFollowUpUrl(phone, name) {
           clean = '2' + clean;
         }
         const firstName = String(name || '').trim().split(/\s+/)[0] || '';
-        const msg = `سلام ونعمة يا ${firstName} 🤍 مفتقدينك جداً في اجتماع الخريجين بكنيسة الشهيد العظيم مارمينا، حبيت أطمن عليك وبنتمنى نشوفك اللقاء الجاي!`;
+        const msg = `سلام ونعمة يا ${firstName} 🤍 مفتقدينك جداً في اجتماع الخريجين(أسرة ميتابكالوريا) بكنيسة الشهيد العظيم مارمينا، حبيت أطمن عليك وبنتمنى نشوفك اللقاء الجاي!`;
         return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
       }
 
@@ -941,7 +936,7 @@ document.getElementById('bulkFollowUpBtn').addEventListener('click', () => {
 
         let currentIdx = 0;
         const sentSet = new Set();
-        const generalMsg = 'سلام ونعمة 🤍 مفتقدينكم جداً في اجتماع الخريجين بكنيسة الشهيد العظيم مارمينا، حبينا نطمن عليكم وبنتمنى نشوفكم اللقاء الجاي!';
+        const generalMsg = 'سلام ونعمة 🤍 مفتقدينكم جداً في اجتماع الخريجين بكنيسة الشهيد(أسرة ميتابكالوريا) العظيم مارمينا، حبينا نطمن عليكم وبنتمنى نشوفكم اللقاء الجاي!';
 
         const renderQueueRows = () => absentList.map((r, idx) => {
           const waUrl = getWhatsAppFollowUpUrl(r.phone, r.name);
