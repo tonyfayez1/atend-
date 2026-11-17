@@ -1255,6 +1255,57 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
       });
 
       // ==================== INIT & AUTH ====================
+   function cleanupOldAttendanceSessions(maxDays = 500) {
+        const cutoffMs = Date.now() - maxDays * 24 * 60 * 60 * 1000;
+        const oldDocIds = Object.keys(attendanceSessions).filter(docId => {
+          const sess = attendanceSessions[docId];
+          if (!sess) return false;
+          const dateStr = sess.updatedAt || sess.createdAt;
+          if (!dateStr) return false;
+          const ts = Date.parse(dateStr);
+          return !Number.isNaN(ts) && ts < cutoffMs;
+        });
+
+        if (!oldDocIds.length) return;
+
+        const listHtml = oldDocIds
+          .map(id => `<li class="text-xs text-slate-700">• ${escapeHtml(attendanceSessions[id]?.title || id)} (${escapeHtml(id)})</li>`)
+          .join('');
+
+        openModal(
+          `تنبيه تنظيف سجلات الحضور القديمة (${oldDocIds.length})`,
+          `<div class="space-y-3">
+             <p class="text-sm text-slate-700 leading-relaxed">تم العثور على <strong>${oldDocIds.length}</strong> سجل حضور مرّ عليه أكثر من <strong>${maxDays} يوم</strong>.</p>
+             <ul class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1 max-h-40 overflow-y-auto">${listHtml}</ul>
+             <p class="text-xs font-bold text-emerald-700">✓ سيتم حذف ملفات الحضور القديمة فقط، ولن تتأثر بيانات الأشخاص أو الخدام أو المنشورات.</p>
+           </div>`,
+          `<button type="button" id="cAutoClean" class="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">تجاهل الآن</button>
+           <button type="button" id="yAutoClean" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold">تأكيد حذف سجلات الحضور</button>`
+        );
+
+        document.getElementById('cAutoClean').addEventListener('click', closeModal);
+        document.getElementById('yAutoClean').addEventListener('click', async () => {
+          let deletedCount = 0;
+          for (const docId of oldDocIds) {
+            try {
+              if (db) await db.collection(ATT_COLLECTION).doc(docId).delete();
+              delete attendanceSessions[docId];
+              deletedCount++;
+            } catch (err) {
+              console.error('Auto-cleanup attendance error:', docId, err);
+            }
+          }
+          if (!db && deletedCount > 0) {
+            localStorage.setItem(STORAGE_ATT_KEY, JSON.stringify(attendanceSessions));
+          }
+          renderAttendanceTable();
+          renderAttendanceHistory();
+          closeModal();
+          if (deletedCount > 0) {
+            showToast(`تم حذف ${deletedCount} سجل حضور أقدم من ${maxDays} يوم بنجاح 🧹`, '🗑️');
+          }
+        });
+      }
       async function loadAllData() {
         if (db) {
           try {
@@ -1298,6 +1349,7 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
             }
           } catch (e) {}
         }
+        cleanupOldAttendanceSessions(500);
         loadDateAttendance(document.getElementById('attDate').value);
         renderAttendanceHistory();
         renderPublishedList();
