@@ -916,9 +916,9 @@ let activeAttendanceConfig = {
         title: 'الاجتماع الأسبوعي للخريجين',
         restrictTime: false,
         dayOfWeek: 'any',
-        startTime: '',
-        endTime: ''
-  geoEnabled: false,
+       startTime: '',
+        endTime: '',
+        geoEnabled: false,
         geoLat: null,
         geoLng: null,
         geoRadius: 150
@@ -1062,8 +1062,8 @@ function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
                 title: d.title || 'الاجتماع الأسبوعي للخريجين',
                 restrictTime: !!d.restrictTime,
                 dayOfWeek: d.dayOfWeek !== undefined ? String(d.dayOfWeek) : 'any',
-                startTime: d.startTime || '',
-                endTime: d.endTime || ''
+               startTime: d.startTime || '',
+                endTime: d.endTime || '',
                 geoEnabled: !!d.geoEnabled,
                 geoLat: d.geoLat !== undefined ? d.geoLat : null,
                 geoLng: d.geoLng !== undefined ? d.geoLng : null,
