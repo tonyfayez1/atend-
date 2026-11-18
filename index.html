@@ -917,6 +917,10 @@ let activeAttendanceConfig = {
         dayOfWeek: 'any',
         startTime: '',
         endTime: ''
+  geoEnabled: false,
+        geoLat: null,
+        geoLng: null,
+        geoRadius: 150
       };
 
       const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -929,7 +933,54 @@ let activeAttendanceConfig = {
         h = h % 12 || 12;
         return `${h}:${mStr} ${period}`;
       }
+function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const toRad = deg => (deg * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * (Math.sin(dLon / 2) ** 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
 
+      function verifyUserAtChurchLocation() {
+        return new Promise((resolve) => {
+          if (!activeAttendanceConfig.geoEnabled || activeAttendanceConfig.geoLat == null || activeAttendanceConfig.geoLng == null) {
+            resolve({ ok: true });
+            return;
+          }
+          if (!navigator.geolocation) {
+            resolve({ ok: false, msg: 'متصفحك لا يدعم تحديد الموقع الجغرافي (GPS)، ولا يمكن تسجيل الحضور بدونه.' });
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              const dist = haversineDistanceMeters(
+                pos.coords.latitude,
+                pos.coords.longitude,
+                Number(activeAttendanceConfig.geoLat),
+                Number(activeAttendanceConfig.geoLng)
+              );
+              const radius = Number(activeAttendanceConfig.geoRadius) || 150;
+              if (dist <= radius) {
+                resolve({ ok: true, distance: Math.round(dist) });
+              } else {
+                resolve({
+                  ok: false,
+                  msg: `أنت خارج نطاق الكنيسة حالياً (المسافة التقريبية: ${Math.round(dist)} متر، والمسموح: ${radius} متر). يجب التواجد داخل الكنيسة لتسجيل الحضور.`
+                });
+              }
+            },
+            err => {
+              if (err && err.code === 1) {
+                resolve({ ok: false, msg: 'مطلوب السماح بالوصول إلى الموقع (Location) وتفعيله على الموبايل لتأكيد وجودك في الكنيسة.' });
+              } else {
+                resolve({ ok: false, msg: 'تعذر تحديد موقعك. تأكد من تشغيل الـ GPS / اللوكيشن على الموبايل ثم أعد المحاولة.' });
+              }
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+          );
+        });
+      }
       function checkAttendanceWindowStatus() {
         if (!activeAttendanceConfig.restrictTime || !activeAttendanceConfig.startTime || !activeAttendanceConfig.endTime) {
           return { open: true, reason: '' };
@@ -1012,6 +1063,10 @@ let activeAttendanceConfig = {
                 dayOfWeek: d.dayOfWeek !== undefined ? String(d.dayOfWeek) : 'any',
                 startTime: d.startTime || '',
                 endTime: d.endTime || ''
+                geoEnabled: !!d.geoEnabled,
+                geoLat: d.geoLat !== undefined ? d.geoLat : null,
+                geoLng: d.geoLng !== undefined ? d.geoLng : null,
+                geoRadius: d.geoRadius || 150
               };
               updateActiveSessionBadge();
               return;
@@ -1154,6 +1209,17 @@ let activeAttendanceConfig = {
         }
 
         btnEl.disabled = true;
+        if (activeAttendanceConfig.geoEnabled) {
+          btnEl.textContent = 'جاري التحقق من الموقع...';
+          showQuickAttStatus('info', '📍 جاري التأكد من وجودك داخل محيط الكنيسة (تأكد من فتح اللوكيشن)...');
+          const geoCheck = await verifyUserAtChurchLocation();
+          if (!geoCheck.ok) {
+            showQuickAttStatus('error', geoCheck.msg);
+            btnEl.disabled = false;
+            btnEl.textContent = '✓ تسجيل حضور';
+            return;
+          }
+        }
         btnEl.textContent = 'جاري التحقق...';
         showQuickAttStatus('info', 'جاري البحث عن اسمك في قاعدة البيانات...');
 
