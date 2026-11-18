@@ -235,6 +235,37 @@
                 <label for="attEndTime" class="block text-xs font-bold text-slate-700 mb-1">يغلق الساعة</label>
                 <input id="attEndTime" type="time" value="20:00" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]" />
               </div>
+              
+            </div>
+          </div>
+          <!-- GPS Location Restriction Control -->
+          <div class="p-4 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p class="text-xs sm:text-sm font-extrabold text-[#13294B]">📍 قيد الموقع الجغرافي (GPS) لمنع التسجيل من البيت</p>
+                <p class="text-[11px] text-slate-600">يجبر الشخص على تفعيل اللوكيشن والتواجد داخل محيط الكنيسة لتسجيل الحضور.</p>
+              </div>
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[#13294B] bg-white px-3 py-1.5 rounded-xl border border-sky-300">
+                <input id="attGeoEnabled" type="checkbox" class="accent-[#13294B]" />
+                <span>تفعيل قيد الموقع</span>
+              </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+              <div>
+                <label for="attGeoLat" class="block text-xs font-bold text-slate-700 mb-1">خط العرض (Latitude)</label>
+                <input id="attGeoLat" type="number" step="any" placeholder="مثال: 30.0444" dir="ltr" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]" />
+              </div>
+              <div>
+                <label for="attGeoLng" class="block text-xs font-bold text-slate-700 mb-1">خط الطول (Longitude)</label>
+                <input id="attGeoLng" type="number" step="any" placeholder="مثال: 31.2357" dir="ltr" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]" />
+              </div>
+              <div>
+                <label for="attGeoRadius" class="block text-xs font-bold text-slate-700 mb-1">نطاق السماح (بالمتر)</label>
+                <input id="attGeoRadius" type="number" min="30" max="5000" value="150" dir="ltr" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:border-[#13294B]" />
+              </div>
+              <div>
+                <button id="captureCurrentLocationBtn" type="button" class="w-full px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold transition">📍 التقاط موقعي الحالي</button>
+              </div>
             </div>
           </div>
           <!-- Attendance Summary Chips -->
@@ -1089,7 +1120,25 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
         a.click();
         showToast('تم تصدير كشف الحضور', '📥');
       });
-
+document.getElementById('captureCurrentLocationBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          showToast('المتصفح لا يدعم تحديد الموقع الجغرافي', '⚠️');
+          return;
+        }
+        showToast('جاري التقاط موقعك الحالي...', '📍');
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            document.getElementById('attGeoLat').value = pos.coords.latitude.toFixed(6);
+            document.getElementById('attGeoLng').value = pos.coords.longitude.toFixed(6);
+            showToast('تم التقاط إحداثيات الكنيسة بنجاح! اضغط اعتماد الموعد للحفظ', '✓');
+          },
+          err => {
+            console.error(err);
+            showToast('تعذر التقاط الموقع — تأكد من فتح اللوكيشن والسماح للمتصفح', '⚠️');
+          },
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+      });
     document.getElementById('setActiveSessionBtn').addEventListener('click', async () => {
         const dateVal = document.getElementById('attDate').value.trim();
         const titleVal = document.getElementById('attTitle').value.trim() || 'الاجتماع الأسبوعي للخريجين';
@@ -1097,6 +1146,10 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
         const dayOfWeek = document.getElementById('attDayOfWeek').value;
         const startTime = document.getElementById('attStartTime').value;
         const endTime = document.getElementById('attEndTime').value;
+      const geoEnabled = document.getElementById('attGeoEnabled').checked;
+        const geoLat = parseFloat(document.getElementById('attGeoLat').value);
+        const geoLng = parseFloat(document.getElementById('attGeoLng').value);
+        const geoRadius = parseInt(document.getElementById('attGeoRadius').value, 10) || 150;
         if (!dateVal) {
           showToast('اكتب اليوم والساعة أولاً', '⚠️');
           return;
@@ -1112,6 +1165,10 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
           dayOfWeek,
           startTime,
           endTime,
+          geoEnabled,
+          geoLat: Number.isNaN(geoLat) ? null : geoLat,
+          geoLng: Number.isNaN(geoLng) ? null : geoLng,
+          geoRadius,
           updatedAt: new Date().toISOString()
         };
         try {
@@ -1346,6 +1403,10 @@ document.getElementById('attendanceHistoryList').addEventListener('click', e => 
               if (cfg.dayOfWeek !== undefined) document.getElementById('attDayOfWeek').value = String(cfg.dayOfWeek);
               if (cfg.startTime) document.getElementById('attStartTime').value = cfg.startTime;
               if (cfg.endTime) document.getElementById('attEndTime').value = cfg.endTime;
+              if (typeof cfg.geoEnabled === 'boolean') document.getElementById('attGeoEnabled').checked = cfg.geoEnabled;
+              if (cfg.geoLat !== undefined && cfg.geoLat !== null) document.getElementById('attGeoLat').value = cfg.geoLat;
+              if (cfg.geoLng !== undefined && cfg.geoLng !== null) document.getElementById('attGeoLng').value = cfg.geoLng;
+              if (cfg.geoRadius) document.getElementById('attGeoRadius').value = cfg.geoRadius;
             }
           } catch (e) {}
         }
